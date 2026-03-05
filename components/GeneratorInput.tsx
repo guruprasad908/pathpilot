@@ -34,9 +34,13 @@ export default function GeneratorInput() {
                 signal: controller.signal,
             });
 
-            if (!res.ok) throw new Error('Failed to generate roadmap');
-
             const resData = await res.json();
+
+            if (!res.ok) {
+                // Read the precise error details sent from the server
+                throw new Error(resData.details || resData.error || 'Failed to generate roadmap');
+            }
+
             if (resData.roadmap) setRoadmapTemplate(resData.roadmap);
         } catch (err: any) {
             if (err.name === 'AbortError') {

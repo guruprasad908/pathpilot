@@ -27,6 +27,9 @@ const RoadmapSchema = z.object({
     }))
 });
 
+// Allow this function to run for up to 60 seconds on Vercel
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
     try {
         const session = await getSession();
@@ -124,8 +127,13 @@ You MUST respond with ONLY valid JSON strictly matching the following schema str
         // Phase 11: Return the JSON to the frontend instead of saving directly
         return NextResponse.json({ success: true, roadmap: validatedData });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('AI Generation Failed:', error);
-        return NextResponse.json({ error: 'Failed to generate roadmap' }, { status: 500 });
+
+        // Expose error for debugging production
+        return NextResponse.json({
+            error: 'Failed to generate roadmap',
+            details: error?.message || String(error)
+        }, { status: 500 });
     }
 }
