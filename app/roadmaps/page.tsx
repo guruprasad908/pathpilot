@@ -3,37 +3,42 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import NavBar from '../../components/NavBar';
 import MissionLog from './MissionLog';
+import { getSession } from '../../lib/auth';
+import { db } from '../../lib/db';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'My Roadmaps' };
 
 export default async function RoadmapsPage() {
-    const cookieStore = await cookies();
-    const session = cookieStore.get('session')?.value;
+    const userData = await getSession();
+    if (!userData) redirect('/login');
+    const userId = userData.user_id;
 
-    if (!session) {
-        redirect('/login');
-    }
+    // Lightweight projection query computing completion % purely in SQL
+    const result = await db.query(`
+        SELECT 
+            r.id, 
+            r.title, 
+            r.created_at,
+            r.updated_at,
+            COUNT(s.id) as total_modules,
+            COUNT(CASE WHEN sp.status = 'completed' THEN 1 END) as completed_modules,
+            CASE 
+                WHEN COUNT(s.id) > 0 THEN ROUND((COUNT(CASE WHEN sp.status = 'completed' THEN 1 END)::numeric / COUNT(s.id)::numeric) * 100)
+                ELSE 0 
+            END as completion_percent,
+            (SELECT active_roadmap_id FROM users WHERE id = $1) = r.id as is_active
+        FROM roadmaps r
+        LEFT JOIN galaxies g ON g.roadmap_id = r.id
+        LEFT JOIN planets p ON p.galaxy_id = g.id
+        LEFT JOIN subtopics s ON s.planet_id = p.id
+        LEFT JOIN subtopic_progress sp ON sp.subtopic_id = s.id AND sp.user_id = $1
+        WHERE r.user_id = $1
+        GROUP BY r.id, r.title, r.created_at, r.updated_at
+        ORDER BY r.created_at DESC
+    `, [userId]);
 
-    const res = await fetch(`${process.env.APP_URL}/api/roadmaps/all`, {
-        cache: 'no-store',
-        headers: { Cookie: `session=${session}` }
-    });
-
-    if (!res.ok) {
-        return (
-            <div className="min-h-screen bg-transparent text-zinc-100 selection:bg-white/10 flex flex-col font-display">
-                <NavBar />
-                <div className="flex-1 flex items-center justify-center p-16">
-                    <div className="text-rose-400 p-6 bg-rose-950/20 border border-rose-500/50 rounded-xl font-mono uppercase tracking-widest-xl text-xs">
-                        [!] Failed to load mission archives.
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    const roadmaps = await res.json();
+    const roadmaps = result.rows;
 
     return (
         <div className="min-h-screen bg-transparent text-zinc-100 selection:bg-white/10 font-display">

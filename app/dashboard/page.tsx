@@ -10,37 +10,98 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Dashboard' };
 
 export default async function DashboardPage() {
-    const cookieStore = await cookies();
-    const session = cookieStore.get('session')?.value;
-
-    const profileRes = await fetch(`${process.env.APP_URL}/api/profile`, {
-        cache: 'no-store',
-        headers: { Cookie: `session=${session}` }
-    });
-
-    if (profileRes.ok) {
-        const { profile } = await profileRes.json();
-        if (!profile) {
-            redirect('/profile');
-        }
-    }
-
     const userData = await getSession();
-    if (!userData) redirect('/auth');
+    if (!userData) redirect('/login');
     const userId = userData.user_id;
 
-    // Fetch roadmaps
-    const res = await fetch(`${process.env.APP_URL}/api/roadmaps`, {
-        cache: 'no-store',
-        headers: { Cookie: `session=${session}` }
+    // 1. Direct Profile Query
+    const profileResult = await db.query(`
+        SELECT lp.*, up.full_name, u.has_completed_onboarding
+        FROM users u
+        LEFT JOIN user_learning_profile lp ON u.id = lp.user_id
+        LEFT JOIN user_profiles up ON u.id = up.user_id
+        WHERE u.id = $1
+    `, [userId]);
+
+    const profile = profileResult.rows[0];
+    if (!profile || !profile.experience_level) {
+        redirect('/profile');
+    }
+
+    // 2. Direct Roadmap Query (logic from api/roadmaps/route.ts)
+    const roadmapResult = await db.query(`
+        SELECT 
+            r.id as roadmap_id, r.title as roadmap_title,
+            g.id as galaxy_id, g.title as galaxy_title,
+            p.id as planet_id, p.title as planet_title, p.order_index as planet_order,
+            s.id as subtopic_id, s.title as subtopic_title, s.order_index as subtopic_order,
+            sp.status as progress_status, sp.percent_done
+        FROM roadmaps r
+        JOIN users u ON u.id = $1 AND r.id = u.active_roadmap_id
+        LEFT JOIN galaxies g ON g.roadmap_id = r.id
+        LEFT JOIN planets p ON p.galaxy_id = g.id
+        LEFT JOIN subtopics s ON s.planet_id = p.id
+        LEFT JOIN subtopic_progress sp ON sp.subtopic_id = s.id AND sp.user_id = $1
+        ORDER BY r.created_at DESC, g.created_at ASC, p.order_index ASC, s.order_index ASC
+    `, [userId]);
+
+    const roadmapsMap = new Map();
+    roadmapResult.rows.forEach(row => {
+        if (!roadmapsMap.has(row.roadmap_id)) {
+            roadmapsMap.set(row.roadmap_id, {
+                id: row.roadmap_id,
+                title: row.roadmap_title,
+                galaxies: new Map()
+            });
+        }
+        const roadmap = roadmapsMap.get(row.roadmap_id);
+        if (row.galaxy_id) {
+            if (!roadmap.galaxies.has(row.galaxy_id)) {
+                roadmap.galaxies.set(row.galaxy_id, {
+                    id: row.galaxy_id,
+                    title: row.galaxy_title,
+                    planets: new Map()
+                });
+            }
+            const galaxy = roadmap.galaxies.get(row.galaxy_id);
+            if (row.planet_id) {
+                if (!galaxy.planets.has(row.planet_id)) {
+                    galaxy.planets.set(row.planet_id, {
+                        id: row.planet_id,
+                        title: row.planet_title,
+                        orderIndex: row.planet_order,
+                        subtopics: []
+                    });
+                }
+                const planet = galaxy.planets.get(row.planet_id);
+                if (row.subtopic_id) {
+                    planet.subtopics.push({
+                        id: row.subtopic_id,
+                        title: row.subtopic_title,
+                        orderIndex: row.subtopic_order,
+                        status: row.progress_status || 'not_started',
+                        percentDone: row.percent_done || 0
+                    });
+                }
+            }
+        }
     });
 
-    // DIRECT DB QUERY for global stats (Fixes 0m persistence issue)
+    const roadmaps = Array.from(roadmapsMap.values()).map(roadmap => ({
+        ...roadmap,
+        galaxies: Array.from(roadmap.galaxies.values()).map((galaxy: any) => ({
+            ...galaxy,
+            planets: Array.from(galaxy.planets.values())
+        }))
+    }));
+
+    // 3. Direct Stats Query
     const statsQuery = await db.query(`
         SELECT 
             COALESCE(SUM(duration_seconds), 0)::INTEGER as total_seconds,
             COUNT(*)::INTEGER as total_sessions,
-            (SELECT COUNT(*) FROM subtopic_progress WHERE user_id = $1 AND status = 'completed')::INTEGER as completed_topics_count
+            (SELECT COUNT(*) FROM subtopic_progress WHERE user_id = $1 AND status = 'completed')::INTEGER as completed_topics_count,
+            (SELECT COUNT(*) FROM roadmaps WHERE user_id = $1)::INTEGER as roadmaps_count
         FROM study_sessions 
         WHERE user_id = $1 AND duration_seconds IS NOT NULL
     `, [userId]);
@@ -52,26 +113,26 @@ export default async function DashboardPage() {
         completedTopics: stats.completed_topics_count || 0
     };
 
-    const topStatsRes = await fetch(`${process.env.APP_URL}/api/study/top`, {
-        cache: 'no-store',
-        headers: { Cookie: `session=${session}` }
-    });
+    // 4. Direct Top Study Stats (logic from api/study/top/route.ts)
+    const topStatsResult = await db.query(`
+        SELECT 
+            ss.subtopic_id,
+            s.title as subtopic_title,
+            p.title as planet_title,
+            g.title as galaxy_title,
+            COALESCE(SUM(ss.duration_seconds), 0)::INTEGER as total_time,
+            COUNT(ss.id)::INTEGER as study_sessions_count
+        FROM study_sessions ss
+        JOIN subtopics s ON s.id = ss.subtopic_id
+        JOIN planets p ON p.id = s.planet_id
+        JOIN galaxies g ON g.id = p.galaxy_id
+        WHERE ss.user_id = $1 AND ss.duration_seconds IS NOT NULL
+        GROUP BY ss.subtopic_id, s.title, p.title, g.title
+        ORDER BY total_time DESC
+        LIMIT 5
+    `, [userId]);
 
-    if (!res.ok) {
-        return (
-            <div className="min-h-screen font-display text-zinc-100 flex flex-col">
-                <NavBar />
-                <div className="flex items-center justify-center p-16 flex-1">
-                    <div className="text-rose-400 p-6 bg-rose-950/20 border border-rose-500/50 rounded-lg font-mono uppercase tracking-widest text-sm">
-                        [!] Failed to load dashboard data. Please refresh.
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    const roadmaps = await res.json();
-    const topStudyStats = topStatsRes.ok ? await topStatsRes.json() : null;
+    const topStudyStats = { topSubtopics: topStatsResult.rows };
     const activeRoadmap = roadmaps.length > 0 ? roadmaps[0] : null;
 
     let totalModules = 0;
