@@ -13,11 +13,14 @@ const envSchema = z.object({
 const parsedEnv = envSchema.safeParse(process.env);
 
 if (!parsedEnv.success) {
-    console.error(
-        '❌ Invalid environment variables:',
-        JSON.stringify(parsedEnv.error.format(), null, 2)
-    );
-    process.exit(1);
+    if (process.env.NODE_ENV === 'production') {
+        console.warn('⚠️ Environment validation failed. Some features may be disabled.');
+    } else {
+        console.error(
+            '❌ Invalid environment variables:',
+            JSON.stringify(parsedEnv.error.format(), null, 2)
+        );
+    }
 }
 
 // Export a validated env object

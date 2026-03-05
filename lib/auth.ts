@@ -1,16 +1,20 @@
 import { jwtVerify, SignJWT } from 'jose';
 import { cookies } from 'next/headers';
 
-const secretKey = process.env.NEXTAUTH_SECRET;
-if (!secretKey) {
-    throw new Error(
-        '[auth] CRITICAL: NEXTAUTH_SECRET environment variable is not set. ' +
-        'Generate one with: openssl rand -base64 32'
-    );
+function getSecretKey() {
+    const secret = process.env.NEXTAUTH_SECRET;
+    if (!secret) {
+        if (process.env.NODE_ENV === 'production') {
+            console.error('[auth] CRITICAL: NEXTAUTH_SECRET is missing.');
+            return new TextEncoder().encode('fallback-not-secure-only-for-startup');
+        }
+        throw new Error('[auth] NEXTAUTH_SECRET missing. run: openssl rand -base64 32');
+    }
+    return new TextEncoder().encode(secret);
 }
-const key = new TextEncoder().encode(secretKey);
 
 export async function encrypt(payload: any) {
+    const key = getSecretKey();
     return await new SignJWT(payload)
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
@@ -20,6 +24,7 @@ export async function encrypt(payload: any) {
 
 export async function decrypt(input: string): Promise<any> {
     try {
+        const key = getSecretKey();
         const { payload } = await jwtVerify(input, key, {
             algorithms: ['HS256'],
         });
