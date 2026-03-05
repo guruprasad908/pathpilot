@@ -9,8 +9,8 @@ export const db =
     globalForPg.pgPool ||
     new Pool({
         connectionString: env.DATABASE_URL,
-        // Add SSL support only if we are using Supabase or production hosts requiring it
-        ssl: env.DATABASE_URL.includes('supabase.com')
+        // Enable SSL for Supabase and any non-local production database
+        ssl: (env.DATABASE_URL.includes('supabase.co') || env.DATABASE_URL.includes('supabase.com') || process.env.NODE_ENV === 'production')
             ? { rejectUnauthorized: false }
             : undefined,
     });
