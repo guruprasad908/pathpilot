@@ -1,0 +1,231 @@
+@import "tailwindcss";
+
+@theme {
+  /* 1. Global Color Tokens */
+  --color-galaxy-bg: #000000;
+  /* Force pure black */
+  --color-galaxy-panel: #050507;
+  --color-galaxy-border: rgba(255, 255, 255, 0.05);
+
+  --color-accent-active: #ffffff;
+  /* Standard White */
+  --color-accent-success: #10b981;
+  /* Refined Emerald 500 */
+
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #d4d4d8;
+  /* Zinc 300 - elevated from 400 */
+  --color-text-muted: #a1a1aa;
+  /* Zinc 400 - elevated from 600 */
+
+  /* 2. Spacing Rhythm Variables */
+  --spacing-sys-sm: 0.5rem;
+  --spacing-sys-md: 1rem;
+  --spacing-sys-lg: 1.5rem;
+  --spacing-sys-xl: 2rem;
+  --spacing-sys-2xl: 4rem;
+
+  /* 3. Typography Override */
+  --font-sans: 'Inter', var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Outfit', sans-serif;
+
+  /* 4. Radius Scale Variables */
+  --radius-panel: 1rem;
+  --radius-card: 0.75rem;
+  --radius-pill: 9999px;
+}
+
+/* 5. Z-Index Governance Variables (Applied at Root) */
+:root {
+  --z-stars: -3;
+  --z-nebula: -2;
+  --z-base: 0;
+  --z-panels: 10;
+  --z-hud-nav: 50;
+  --z-overlays: 100;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Dark mode scrollbar for a seamless look */
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  scrollbar-width: thin;
+}
+
+body {
+  /* Enforce global base colors - Absolute Zero Black for perfect asset blending */
+  background: #000000;
+  background-attachment: fixed;
+  color: var(--color-text-primary);
+
+  /* Prevent scrolling layout shift */
+  overflow-y: scroll;
+}
+
+/* Minimalist Scrollbar for Chrome/Safari */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.text-gradient-mono {
+  background: linear-gradient(to right, #ffffff, #71717a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.tracking-widest-xl {
+  letter-spacing: 0.15em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* 5.1 Astronomical Background Layers */
+.static-starfield {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-stars);
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.4) 50%, transparent 60%),
+    radial-gradient(1.5px 1.5px at 80% 70%, rgba(255, 255, 255, 0.6) 50%, transparent 60%),
+    radial-gradient(1px 1px at 10% 80%, rgba(255, 255, 255, 0.3) 50%, transparent 60%),
+    radial-gradient(2px 2px at 40% 10%, rgba(255, 255, 255, 0.5) 50%, transparent 60%),
+    radial-gradient(1px 1px at 60% 90%, rgba(255, 255, 255, 0.4) 50%, transparent 60%),
+    radial-gradient(1.5px 1.5px at 90% 20%, rgba(255, 255, 255, 0.6) 50%, transparent 60%),
+    radial-gradient(1px 1px at 30% 50%, rgba(255, 255, 255, 0.2) 50%, transparent 60%);
+  background-size: 200px 200px, 350px 350px, 150px 150px, 400px 400px, 450px 450px, 250px 250px, 300px 300px;
+}
+
+.hud-grid {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-nebula);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100px 100px;
+  pointer-events: none;
+}
+
+.scanline-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-panels);
+  background: repeating-linear-gradient(0deg,
+      rgba(0, 0, 0, 0.1),
+      rgba(0, 0, 0, 0.1) 1px,
+      transparent 1px,
+      transparent 2px);
+  pointer-events: none;
+  opacity: 0.15;
+}
+
+/* 5.3 Starfield Dynamics */
+@keyframes starTwinkle {
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes shootingStar {
+  0% {
+    transform: translateX(0) translateY(0) rotate(-45deg) scale(0);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) rotate(-45deg) scale(1);
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(-500px) translateY(500px) rotate(-45deg) scale(0);
+    opacity: 0;
+  }
+}
+
+.shooting-star {
+  position: absolute;
+  width: 150px;
+  height: 2px;
+  background: linear-gradient(90deg, white, transparent);
+  z-index: var(--z-nebula);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.star {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+
+.parallax-layer {
+  position: fixed;
+  inset: -10%;
+  /* Bleed for parallax movement */
+  width: 120%;
+  height: 120%;
+  pointer-events: none;
+  z-index: var(--z-stars);
+  will-change: transform;
+}
+
+/* 6. Standardized Shadow & Glow Utilities */
+.shadow-panel {
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+}
+
+.glow-active {
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.glow-success {
+  box-shadow: 0 0 12px rgba(0, 255, 157, 0.4);
+  border-color: rgba(0, 255, 157, 0.5);
+}
+
+/* 7. Layout Container Utility */
+.container-standard {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--spacing-sys-lg);
+  padding-right: var(--spacing-sys-lg);
+}
