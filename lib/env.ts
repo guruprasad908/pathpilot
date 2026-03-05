@@ -14,7 +14,7 @@ const parsedEnv = envSchema.safeParse(process.env);
 
 if (!parsedEnv.success) {
     if (process.env.NODE_ENV === 'production') {
-        console.warn('⚠️ Environment validation failed. Some features may be disabled.');
+        console.warn('⚠️ Environment validation failed. Falling back to process.env.');
     } else {
         console.error(
             '❌ Invalid environment variables:',
@@ -23,5 +23,6 @@ if (!parsedEnv.success) {
     }
 }
 
-// Export a validated env object
-export const env = parsedEnv.data;
+// Export a validated env object, but fall back to raw process.env if validation failed
+// cast to z.infer<typeof envSchema> to satisfy TypeScript while maintaining resilience
+export const env = (parsedEnv.success ? parsedEnv.data : process.env) as z.infer<typeof envSchema>;
