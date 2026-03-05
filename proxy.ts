@@ -44,7 +44,7 @@ function isRateLimited(ip: string, path: string): boolean {
     return false;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     if (RATE_LIMITS[pathname]) {
