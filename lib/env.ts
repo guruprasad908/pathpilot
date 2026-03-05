@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 const envSchema = z.object({
     // Required
-    DATABASE_URL: z.string().url("DATABASE_URL must be a valid connection string"),
-    APP_URL: z.string().url().default("http://localhost:3000"),
+    DATABASE_URL: z.string().min(10, "DATABASE_URL must be a valid connection string"),
+    APP_URL: z.string().default("http://localhost:3000"),
 
     // Optional for now until we build those features
     NEXTAUTH_SECRET: z.string().optional(),

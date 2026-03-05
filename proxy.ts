@@ -3,8 +3,8 @@ import type { NextRequest } from 'next/server';
 
 // --- In-memory Rate Limiter ---
 // Uses a Map<IP_endpoint_key, { count, resetAt }>
-// This is sufficient for single-instance deployments.
-// For multi-instance/serverless (e.g., Vercel), replace this with a Redis-backed solution like Upstash.
+// Note: In-memory store resets on each serverless function cold start.
+// For persistent rate limiting across instances, use Upstash Redis.
 
 interface RateRecord {
     count: number;
@@ -14,9 +14,9 @@ interface RateRecord {
 const rateLimitStore = new Map<string, RateRecord>();
 
 const RATE_LIMITS: Record<string, { maxRequests: number; windowMs: number }> = {
-    '/api/auth/login': { maxRequests: 10, windowMs: 60_000 },   // 10 / min
-    '/api/auth/register': { maxRequests: 5, windowMs: 60_000 },   // 5 / min
-    '/api/auth/forgot-password': { maxRequests: 3, windowMs: 60_000 },   // 3 / min
+    '/api/auth/login': { maxRequests: 10, windowMs: 60_000 },
+    '/api/auth/register': { maxRequests: 5, windowMs: 60_000 },
+    '/api/auth/forgot-password': { maxRequests: 3, windowMs: 60_000 },
 };
 
 function getRateLimitKey(ip: string, path: string): string {
@@ -37,7 +37,7 @@ function isRateLimited(ip: string, path: string): boolean {
     }
 
     if (record.count >= rule.maxRequests) {
-        return true; // Limit exceeded
+        return true;
     }
 
     record.count += 1;
@@ -47,7 +47,6 @@ function isRateLimited(ip: string, path: string): boolean {
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Only apply rate limiting to auth routes
     if (RATE_LIMITS[pathname]) {
         const ip =
             request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -72,7 +71,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-    // Only run middleware on these specific paths to keep it performant
     matcher: [
         '/api/auth/login',
         '/api/auth/register',
