@@ -373,7 +373,7 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                                 <div className="flex items-center justify-between gap-2">
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <span className="font-mono text-xs text-zinc-600 shrink-0">{(idx + 1).toString().padStart(2, '0')}</span>
-                                                        <span className="font-medium text-zinc-200 text-sm leading-snug truncate">{sub.title}</span>
+                                                        <span className="font-medium text-zinc-200 text-sm leading-snug">{sub.title}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5 shrink-0">
                                                         {sub.status !== 'locked' && sub.status !== 'completed' && (
@@ -411,6 +411,22 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                                         )}
                                                     </div>
                                                 </div>
+                                                {sub.description && (
+                                                    <p className="text-xs text-zinc-500 font-light leading-relaxed mt-2 ml-7">
+                                                        {sub.description}
+                                                    </p>
+                                                )}
+                                                {sub.concepts_to_master && sub.concepts_to_master.length > 0 && (
+                                                    <div className="mt-2 ml-7 space-y-1 border-l border-cyan-500/20 pl-3">
+                                                        <div className="text-[9px] font-mono text-cyan-500/60 uppercase tracking-widest mb-1">Concepts to Master</div>
+                                                        {sub.concepts_to_master.map((concept: string, cIdx: number) => (
+                                                            <div key={cIdx} className="flex items-start gap-1.5 text-[11px] text-zinc-400">
+                                                                <span className="text-cyan-500/50 mt-0.5 shrink-0">·</span>
+                                                                <span className="leading-snug">{concept}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })}
@@ -801,12 +817,28 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                                     <span className="font-mono text-[10px] text-zinc-700 group-hover:text-zinc-500 transition-colors shrink-0">
                                                         {(idx + 1).toString().padStart(2, '0')}
                                                     </span>
-                                                    <div className="min-w-0">
-                                                        <div className="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors truncate">
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">
                                                             {sub.title}
                                                         </div>
+                                                        {sub.description && (
+                                                            <p className="text-xs text-zinc-500 font-light leading-relaxed mt-1.5 max-w-lg">
+                                                                {sub.description}
+                                                            </p>
+                                                        )}
+                                                        {sub.concepts_to_master && sub.concepts_to_master.length > 0 && (
+                                                            <div className="mt-2 space-y-1 border-l border-cyan-500/20 pl-3">
+                                                                <div className="text-[9px] font-mono text-cyan-500/60 uppercase tracking-widest mb-1">Concepts to Master</div>
+                                                                {sub.concepts_to_master.map((concept: string, cIdx: number) => (
+                                                                    <div key={cIdx} className="flex items-start gap-1.5 text-[11px] text-zinc-400">
+                                                                        <span className="text-cyan-500/50 mt-0.5 shrink-0">·</span>
+                                                                        <span className="leading-snug">{concept}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                         {(sessionCount > 0 || totalMinutes > 0) && (
-                                                            <div className="text-[10px] font-mono text-zinc-700 mt-0.5 uppercase tracking-wider">
+                                                            <div className="text-[10px] font-mono text-zinc-700 mt-2 uppercase tracking-wider">
                                                                 {sessionCount > 0 && `${sessionCount} session${sessionCount !== 1 ? 's' : ''}`}
                                                                 {sessionCount > 0 && totalMinutes > 0 && ' · '}
                                                                 {totalMinutes > 0 && `${totalMinutes}m studied`}

@@ -37,7 +37,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                 r.id as roadmap_id, r.title as roadmap_title,
                 g.id as galaxy_id, g.title as galaxy_title,
                 p.id as planet_id, p.title as planet_title, p.order_index as planet_order,
-                s.id as subtopic_id, s.title as subtopic_title, s.order_index as subtopic_order,
+                s.id as subtopic_id, s.title as subtopic_title, s.description as subtopic_description, s.concepts_to_master as subtopic_concepts, s.order_index as subtopic_order,
                 sp.status as progress_status, sp.percent_done,
                 COALESCE(st.total_time, 0) as total_time,
                 COALESCE(st.session_count, 0) as session_count,
@@ -95,9 +95,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                     const planet = galaxy.planets.get(row.planet_id);
 
                     if (row.subtopic_id) {
+                        let parsedConcepts = [];
+                        if (row.subtopic_concepts) {
+                            parsedConcepts = typeof row.subtopic_concepts === 'string' ? JSON.parse(row.subtopic_concepts) : row.subtopic_concepts;
+                        }
+                        
                         planet.subtopics.push({
                             id: row.subtopic_id,
                             title: row.subtopic_title,
+                            description: row.subtopic_description,
+                            concepts_to_master: parsedConcepts,
                             orderIndex: row.subtopic_order,
                             status: row.progress_status || 'not_started',
                             percentDone: row.percent_done || 0,

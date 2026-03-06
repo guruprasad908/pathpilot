@@ -16,6 +16,7 @@ const RoadmapSchema = z.object({
             subtopics: z.array(z.object({
                 title: z.string(),
                 description: z.string().optional(),
+                concepts_to_master: z.array(z.string()).optional(),
                 key_tools: z.array(z.string()).optional()
             }))
         }))
@@ -59,9 +60,12 @@ export async function POST(req: Request) {
                 const planetId = pRes.rows[0].id;
 
                 for (let k = 0; k < galaxies[i].planets[j].subtopics.length; k++) {
+                    const sub = galaxies[i].planets[j].subtopics[k];
+                    const conceptsStr = sub.concepts_to_master ? JSON.stringify(sub.concepts_to_master) : '[]';
+                    
                     await db.query(
-                        `INSERT INTO subtopics (planet_id, title, order_index) VALUES ($1, $2, $3)`,
-                        [planetId, galaxies[i].planets[j].subtopics[k].title, k]
+                        `INSERT INTO subtopics (planet_id, title, description, concepts_to_master, order_index) VALUES ($1, $2, $3, $4, $5)`,
+                        [planetId, sub.title, sub.description || null, conceptsStr, k]
                     );
                 }
             }
