@@ -159,6 +159,7 @@ export default function UniverseMap({ roadmap }: { roadmap: any }) {
                         const angle = (i / planets.length) * 2 * Math.PI - Math.PI / 2;
                         const x = CENTER + ORBIT_RADIUS * Math.cos(angle);
                         const y = CENTER + ORBIT_RADIUS * Math.sin(angle);
+                        const subtopics = planet.subtopics || [];
 
                         // Status mapping
                         let baseClasses = "absolute rounded-full flex items-center justify-center transition-all duration-500 cursor-pointer pointer-events-auto hover:scale-110 ";
@@ -187,7 +188,7 @@ export default function UniverseMap({ roadmap }: { roadmap: any }) {
 
                                 {/* Astronaut Icon for Current Node */}
                                 {planet.isCurrent && (
-                                    <div className="absolute -top-6 bg-[#050510] border border-cyan-500 rounded-full p-1 animate-bounce shadow-[0_0_10px_rgba(34,211,238,0.8)]">
+                                    <div className="absolute -top-6 bg-[#050510] border border-cyan-500 rounded-full p-1 animate-bounce shadow-[0_0_10px_rgba(34,211,238,0.8)] z-10">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M12 2a3 3 0 0 0-3 3v1a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                                             <path d="M19 9v2c0 2-2 4-4 4H9c-2 0-4-2-4-4V9" />
@@ -199,6 +200,36 @@ export default function UniverseMap({ roadmap }: { roadmap: any }) {
                                         </svg>
                                     </div>
                                 )}
+
+                                {/* Render Subtopics as Orbiting Satellites */}
+                                {subtopics.map((sub: any, sIdx: number) => {
+                                    const subAngle = (sIdx / subtopics.length) * 2 * Math.PI;
+                                    const subOrbitRadius = 65; // Orbit distance from Planet center
+                                    // Calculate relative to the 80x80 planet div (center is 40, 40)
+                                    const subX = 40 + subOrbitRadius * Math.cos(subAngle) - 10; // -10 to half 20px width
+                                    const subY = 40 + subOrbitRadius * Math.sin(subAngle) - 10;
+                                    
+                                    let subColor = "bg-zinc-800 border-zinc-700";
+                                    if (sub.status === 'completed') subColor = "bg-emerald-500 border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]";
+                                    else if (sub.status === 'in_progress') subColor = "bg-cyan-500 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]";
+
+                                    return (
+                                        <div 
+                                            key={`sub-${sIdx}`}
+                                            className={`absolute w-[20px] h-[20px] rounded-full border flex items-center justify-center group/sub ${subColor} hover:scale-125 transition-transform`}
+                                            style={{ left: `${subX}px`, top: `${subY}px` }}
+                                            title={sub.title}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                router.push(`/practice/${sub.id || roadmap.id}`);
+                                            }}
+                                        >
+                                           <div className="absolute w-max bg-black/90 border border-white/10 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/sub:opacity-100 transition-opacity -top-8 pointer-events-none whitespace-nowrap z-20">
+                                               {sub.title}
+                                           </div>
+                                        </div>
+                                    )
+                                })}
                             </div>
                         );
                     })}
