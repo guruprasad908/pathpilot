@@ -317,8 +317,16 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                                 <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotColor}`} aria-hidden="true" />
                                                 <div className="min-w-0">
                                                     <div className="font-semibold text-sm text-zinc-100 truncate leading-tight">{node.title}</div>
-                                                    <div className="text-xs font-mono text-zinc-600 mt-0.5 tracking-wider uppercase">
-                                                        {node.subtopics?.length || 0} topic{node.subtopics?.length !== 1 ? 's' : ''}
+                                                    <div className="flex items-center gap-1.5 mt-1.5">
+                                                        {node.subtopics?.map((sub: any, sIdx: number) => {
+                                                            let sColor = "bg-zinc-800";
+                                                            if (sub.status === 'completed') sColor = "bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.8)]";
+                                                            else if (sub.status === 'in_progress') sColor = "bg-cyan-500 shadow-[0_0_4px_rgba(34,211,238,0.8)]";
+                                                            return <div key={sIdx} className={`w-1.5 h-1.5 rounded-full ${sColor}`} />
+                                                        })}
+                                                        <span className="text-[10px] font-mono text-zinc-600 tracking-wider uppercase ml-1">
+                                                            {node.subtopics?.length || 0} topic{node.subtopics?.length !== 1 ? 's' : ''}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -654,6 +662,37 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                                 {node.title}
                                             </div>
                                         </div>
+
+                                        {/* Orbital Subtopic Moons */}
+                                        {!isMobile && (node.subtopics || []).map((sub: any, sIdx: number) => {
+                                            const subtopicsCount = node.subtopics.length;
+                                            const subAngle = (sIdx / subtopicsCount) * 2 * Math.PI;
+                                            const subOrbitRadius = 75; // 100px width = 50 radius + 25 gap
+                                            const subX = 50 + subOrbitRadius * Math.cos(subAngle) - 8; // -8 for half 16px width
+                                            const subY = 50 + subOrbitRadius * Math.sin(subAngle) - 8;
+                                            
+                                            let subColor = "bg-zinc-800 border-zinc-700";
+                                            if (sub.status === 'completed') subColor = "bg-emerald-500 border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]";
+                                            else if (sub.status === 'in_progress') subColor = "bg-cyan-500 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]";
+
+                                            return (
+                                                <div 
+                                                    key={`sub-${sIdx}`}
+                                                    className={`absolute w-[16px] h-[16px] rounded-full border flex items-center justify-center group/submoon ${subColor} hover:scale-125 transition-transform cursor-pointer`}
+                                                    style={{ left: `${subX}px`, top: `${subY}px` }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (sub.status !== 'locked') {
+                                                            router.push(`/practice/${sub.id || roadmap.id}`); 
+                                                        }
+                                                    }}
+                                                >
+                                                   <div className="absolute w-max bg-black/90 border border-white/10 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/submoon:opacity-100 transition-opacity -top-8 pointer-events-none whitespace-nowrap z-20">
+                                                       {sub.title}
+                                                   </div>
+                                                </div>
+                                            )
+                                        })}
                                     </div>
                                 </div>
                             );
