@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 
 export default function GeneratorInput() {
     const [prompt, setPrompt] = useState('');
+    const [isScoping, setIsScoping] = useState(false);
+    const [scopes, setScopes] = useState<{title: string, description: string}[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [roadmapTemplate, setRoadmapTemplate] = useState<any | null>(null);
@@ -13,11 +15,38 @@ export default function GeneratorInput() {
     const abortRef = React.useRef<AbortController | null>(null);
     const router = useRouter();
 
-    const handleGenerate = async (e: React.FormEvent) => {
+    const handleScope = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!prompt.trim()) return;
 
+        setIsScoping(true);
+        setScopes(null);
+        setGenerationError('');
+
+        try {
+            const res = await fetch('/api/generate/scope', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt }),
+            });
+
+            const resData = await res.json();
+
+            if (!res.ok) {
+                throw new Error(resData.error || 'Failed to identify learning paths');
+            }
+
+            if (resData.paths) setScopes(resData.paths);
+        } catch (err: any) {
+            setGenerationError(err.message || 'AI scoping failed. Please try again.');
+        } finally {
+            setIsScoping(false);
+        }
+    };
+
+    const handleGenerate = async (finalPrompt: string) => {
         setIsLoading(true);
+        setScopes(null);
         setRoadmapTemplate(null);
         setGenerationError('');
 
@@ -30,7 +59,7 @@ export default function GeneratorInput() {
             const res = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt }),
+                body: JSON.stringify({ prompt: finalPrompt }),
                 signal: controller.signal,
             });
 
@@ -111,6 +140,66 @@ export default function GeneratorInput() {
     };
 
     // ─── Loading State: Active AI Core Animation ───────────────────────────
+    // ─── Loading State: Active AI Core Animation ───────────────────────────
+    if (isScoping) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] py-20 relative">
+                <div className="relative w-32 h-32 mb-12">
+                    <div className="absolute inset-0 rounded-full border border-emerald-500/20 border-t-emerald-400 animate-spin" style={{ animationDuration: '1.5s' }} />
+                    <div className="absolute inset-[38%] rounded-full bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.8)] animate-pulse" />
+                </div>
+                <div className="text-center space-y-3 mb-10">
+                    <p className="font-mono text-xs text-emerald-400 tracking-widest-xl uppercase animate-pulse">
+                        Analyzing Market Pathways
+                    </p>
+                    <p className="font-mono text-xs text-zinc-500 tracking-widest-xl">
+                        Identifying optimal specializations for {prompt}...
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (scopes) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[55vh] py-12 relative max-w-4xl mx-auto">
+                <div className="text-center mb-12 relative">
+                    <div className="flex items-center justify-center gap-3 mb-5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse" />
+                        <span className="font-mono text-xs text-emerald-500 uppercase tracking-widest-xl">Target Acquisition</span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse" />
+                    </div>
+                    <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4 font-display">
+                        Select Your Specialization
+                    </h2>
+                    <p className="text-zinc-400 text-base max-w-xl leading-relaxed font-light mx-auto">
+                        We identified multiple high-value career paths for this topic. Which trajectory aligns with your goals?
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                    {scopes.map((scope, idx) => (
+                        <button
+                            key={idx}
+                            onClick={() => handleGenerate(`Topic: ${prompt}. Focus: ${scope.title}. Context: ${scope.description}`)}
+                            className="bg-zinc-900/60 border border-white/5 hover:border-emerald-500/50 rounded-xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(16,185,129,0.1)] group"
+                        >
+                            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">{scope.title}</h3>
+                            <p className="text-zinc-400 text-sm font-light leading-relaxed">{scope.description}</p>
+                        </button>
+                    ))}
+                </div>
+
+                <button
+                    onClick={() => setScopes(null)}
+                    className="mt-10 text-zinc-500 hover:text-white text-xs font-mono uppercase tracking-widest-xl transition-colors"
+                >
+                    ← Back to Input
+                </button>
+            </div>
+        );
+    }
+
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] py-20 relative">
@@ -163,7 +252,7 @@ export default function GeneratorInput() {
                     </p>
                 </div>
 
-                <form onSubmit={handleGenerate} className="w-full max-w-2xl relative group">
+                <form onSubmit={handleScope} className="w-full max-w-2xl relative group">
                     {/* Input glow container */}
                     <div className="relative">
                         {/* Subtle ambient glow behind input - White/Zinc theme */}
@@ -345,6 +434,16 @@ export default function GeneratorInput() {
                                                 {(subtopic.description || (subtopic.key_tools && subtopic.key_tools.length > 0)) && (
                                                     <div className="ml-[22px] text-xs text-zinc-500/80 mb-2">
                                                         {subtopic.description && <p className="mb-2 font-light leading-relaxed max-w-2xl">{subtopic.description}</p>}
+                                                        {subtopic.concepts_to_master && subtopic.concepts_to_master.length > 0 && (
+                                                            <div className="mb-3 space-y-1">
+                                                                {subtopic.concepts_to_master.map((concept: string, cIndex: number) => (
+                                                                    <div key={cIndex} className="flex items-start gap-2 text-[11px] text-zinc-400">
+                                                                        <span className="text-cyan-500 mt-0.5 shrink-0">·</span>
+                                                                        <span className="leading-tight">{concept}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                         {subtopic.key_tools && subtopic.key_tools.length > 0 && (
                                                             <div className="flex gap-2 flex-wrap">
                                                                 {subtopic.key_tools.map((tool: string, tIndex: number) => (

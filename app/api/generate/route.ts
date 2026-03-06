@@ -21,6 +21,7 @@ const RoadmapSchema = z.object({
             subtopics: z.array(z.object({
                 title: z.string(),
                 description: z.string().optional(),
+                concepts_to_master: z.array(z.string()),
                 key_tools: z.array(z.string()).optional()
             }))
         }))
@@ -69,6 +70,7 @@ Generate a structured learning roadmap for the requested topic. You MUST respond
             { 
               "title": "Specific Concept",
               "description": "1-2 sentences explaining the concept and its practical application.",
+              "concepts_to_master": ["Detailed syllabus point 1", "Detailed syllabus point 2", "Detailed syllabus point 3", "Detailed syllabus point 4", "Detailed syllabus point 5"],
               "key_tools": ["Tool1", "Tool2"] 
             }
           ]
