@@ -22,6 +22,8 @@ const responseSchema = z.object({
     ).length(3, "Must return exactly 3 problems")
 });
 
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
     try {
         const session = await getSession();
