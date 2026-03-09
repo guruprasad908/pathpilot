@@ -117,20 +117,25 @@ export default async function DashboardPage() {
     const topStudyStats = { topSubtopics: topStatsResult.rows };
     const activeRoadmap = activeRoadmapData;
 
-    // Count leaf nodes for completion
+    // Count completion units (Depth 2 nodes, or leaves if roadmap is shallow)
     let totalModules = 0;
     let completedModules = 0;
 
-    function countLeaves(node: any) {
-        if (node.isLeaf) {
+    function countCompletionUnits(node: any) {
+        // A node is a completion unit if it's at depth 2 (user interaction level)
+        // OR if it's a leaf node and the roadmap is shallow (depth < 2)
+        const isCompletionUnit = node.depth === 2 || (node.isLeaf && node.depth < 2);
+
+        if (isCompletionUnit) {
             totalModules++;
             if (node.status === 'completed') completedModules++;
         }
-        if (node.children) node.children.forEach(countLeaves);
+        
+        if (node.children) node.children.forEach(countCompletionUnits);
     }
 
     if (activeRoadmap) {
-        activeRoadmap.children.forEach(countLeaves);
+        activeRoadmap.children.forEach(countCompletionUnits);
     }
 
     const completionPercent = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;

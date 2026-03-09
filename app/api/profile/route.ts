@@ -64,21 +64,34 @@ export async function GET() {
         const activeId = activeRmRes.rows[0]?.active_roadmap_id;
 
         if (activeId) {
+            // Progress on the active roadmap (at user-interaction level: Depth 2)
             const progressRes = await db.query(`
+                WITH roadmap_stats AS (
+                    -- Total units at Depth 2 (or leaves if roadmap is shallow)
+                    SELECT COUNT(*) as total
+                    FROM roadmap_nodes
+                    WHERE roadmap_id = $1
+                    AND (depth = 2 OR (is_leaf = TRUE AND depth < 2))
+                ),
+                completed_stats AS (
+                    -- Completed units at the same level
+                    SELECT COUNT(*) as completed
+                    FROM subtopic_progress sp
+                    JOIN roadmap_nodes n ON n.id = sp.subtopic_id
+                    WHERE sp.user_id = $2
+                    AND sp.status = 'completed'
+                    AND n.roadmap_id = $1
+                    AND (n.depth = 2 OR (n.is_leaf = TRUE AND n.depth < 2))
+                )
                 SELECT 
-                    COUNT(*) as total_nodes,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_nodes
-                FROM roadmap_nodes n
-                LEFT JOIN subtopic_progress sp ON n.id = sp.subtopic_id AND sp.user_id = $1
-                WHERE n.roadmap_id = $2 AND n.is_leaf = TRUE
-            `, [session.user_id, activeId]);
+                    CASE 
+                        WHEN rs.total > 0 THEN ROUND((cs.completed::numeric / rs.total::numeric) * 100)
+                        ELSE 0 
+                    END as progress
+                FROM roadmap_stats rs, completed_stats cs
+            `, [activeId, session.user_id]);
             
-            const p = progressRes.rows[0];
-            const total = parseInt(p.total_nodes, 10);
-            const done = parseInt(p.completed_nodes, 10);
-            if (total > 0) {
-                activeRoadmapProgress = Math.round((done / total) * 100);
-            }
+            activeRoadmapProgress = parseInt(progressRes.rows[0]?.progress || '0', 10);
         }
 
         return NextResponse.json({ 
