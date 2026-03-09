@@ -11,9 +11,15 @@ export default function ProfileView({ profile }: ProfileViewProps) {
         year: 'numeric'
     });
 
+    const formatTime = (seconds: number) => {
+        if (seconds >= 3600) return `${(seconds / 3600).toFixed(1)}h`;
+        if (seconds >= 60) return `${Math.floor(seconds / 60)}m`;
+        return `${seconds}s`;
+    };
+
     const stats = [
         { label: 'Completed', value: profile.completed_topics_count || 0, color: 'text-white font-extrabold' },
-        { label: 'Level', value: profile.experience_level, color: 'text-white font-extrabold', capitalize: true },
+        { label: 'Efficiency', value: formatTime(profile.total_seconds || 0), color: 'text-white font-extrabold' },
         { label: 'Joined', value: joinDate, color: 'text-zinc-500 font-medium' },
     ];
 
@@ -51,7 +57,7 @@ export default function ProfileView({ profile }: ProfileViewProps) {
                     </div>
 
                     <div className="flex justify-center md:justify-start gap-10 mb-8">
-                        {stats.map((s, idx) => (
+                        {stats.map((s: any, idx) => (
                             <div key={idx} className="flex flex-col md:flex-row md:items-baseline md:gap-2">
                                 <span className={`text-base font-extrabold ${s.color} ${s.capitalize ? 'capitalize' : ''}`}>
                                     {s.value}
@@ -115,11 +121,11 @@ export default function ProfileView({ profile }: ProfileViewProps) {
                         <div className="flex flex-col gap-8">
                             <div>
                                 <div className="flex justify-between items-baseline mb-3">
-                                    <span className="text-[9px] text-zinc-500 uppercase tracking-widest-xl font-bold">Sectors Secured</span>
-                                    <span className="text-white font-bold font-mono text-sm shadow-[0_0_10px_rgba(255,255,255,0.2)]">{profile.completed_topics_count || 0}</span>
+                                    <span className="text-[9px] text-zinc-500 uppercase tracking-widest-xl font-bold">Active Path Progress</span>
+                                    <span className="text-white font-bold font-mono text-sm shadow-[0_0_10px_rgba(255,255,255,0.2)]">{profile.active_roadmap_progress || 0}%</span>
                                 </div>
                                 <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
-                                    <div className="h-full bg-white transition-all duration-1000 shadow-[0_0_12px_rgba(255,255,255,0.4)]" style={{ width: '45%' }} />
+                                    <div className="h-full bg-white transition-all duration-1000 shadow-[0_0_12px_rgba(255,255,255,0.4)]" style={{ width: `${profile.active_roadmap_progress || 0}%` }} />
                                 </div>
                             </div>
                             <div className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
@@ -129,9 +135,9 @@ export default function ProfileView({ profile }: ProfileViewProps) {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                         </svg>
                                     </div>
-                                    <div className="text-xs text-zinc-300 font-bold uppercase tracking-widest-xl">First Flight</div>
+                                    <div className="text-xs text-zinc-300 font-bold uppercase tracking-widest-xl">Total Sectors Secured</div>
                                 </div>
-                                <span className="text-[10px] font-mono text-white font-bold tracking-widest-xl">SECURED</span>
+                                <span className="text-[10px] font-mono text-white font-bold tracking-widest-xl uppercase">{profile.completed_topics_count || 0} SECURED</span>
                             </div>
                         </div>
                     </div>

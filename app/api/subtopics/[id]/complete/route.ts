@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '../../../../../lib/db';
 import { getSession } from '../../../../../lib/auth';
+import { revalidatePath } from 'next/cache';
 
 export async function POST(
     req: Request,
@@ -38,6 +39,11 @@ export async function POST(
                 percent_done = 100, 
                 updated_at = NOW()
         `, [userId, subtopicId]);
+
+        // Revalidate dependent pages to bust cache
+        revalidatePath('/dashboard');
+        revalidatePath('/profile');
+        revalidatePath('/roadmaps');
 
         return NextResponse.json({
             success: true,

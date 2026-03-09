@@ -3,6 +3,8 @@ import { db } from '../../../lib/db';
 import { getSession } from '../../../lib/auth';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const LearningProfileSchema = z.object({
     experience_level: z.enum(['beginner', 'intermediate', 'advanced']),
     pace_preference: z.enum(['slow', 'normal', 'fast']),
@@ -47,7 +49,46 @@ export async function GET() {
             return NextResponse.json({ profile: null });
         }
 
-        return NextResponse.json({ profile: data });
+        // Calculate additional stats for the profile view
+        const statsResult = await db.query(`
+            SELECT 
+                (SELECT COUNT(*) FROM subtopic_progress WHERE user_id = $1 AND status = 'completed')::INTEGER as completed_topics_count,
+                (SELECT COALESCE(SUM(duration_seconds), 0) FROM study_sessions WHERE user_id = $1)::INTEGER as total_seconds
+        `, [session.user_id]);
+
+        const stats = statsResult.rows[0];
+
+        // Calculate progress for active roadmap
+        let activeRoadmapProgress = 0;
+        const activeRmRes = await db.query(`SELECT active_roadmap_id FROM users WHERE id = $1`, [session.user_id]);
+        const activeId = activeRmRes.rows[0]?.active_roadmap_id;
+
+        if (activeId) {
+            const progressRes = await db.query(`
+                SELECT 
+                    COUNT(*) as total_nodes,
+                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_nodes
+                FROM roadmap_nodes n
+                LEFT JOIN subtopic_progress sp ON n.id = sp.subtopic_id AND sp.user_id = $1
+                WHERE n.roadmap_id = $2 AND n.is_leaf = TRUE
+            `, [session.user_id, activeId]);
+            
+            const p = progressRes.rows[0];
+            const total = parseInt(p.total_nodes, 10);
+            const done = parseInt(p.completed_nodes, 10);
+            if (total > 0) {
+                activeRoadmapProgress = Math.round((done / total) * 100);
+            }
+        }
+
+        return NextResponse.json({ 
+            profile: {
+                ...data,
+                completed_topics_count: stats.completed_topics_count,
+                total_seconds: stats.total_seconds,
+                active_roadmap_progress: activeRoadmapProgress
+            } 
+        });
     } catch (error) {
         console.error('Failed to get profile:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

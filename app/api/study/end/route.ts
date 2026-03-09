@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '../../../../lib/db';
 import { getSession } from '../../../../lib/auth';
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 
 const EndSessionSchema = z.object({
     sessionId: z.string().uuid()
@@ -41,6 +42,10 @@ export async function POST(req: Request) {
              RETURNING id, duration_seconds`,
             [sessionId, userId]
         );
+
+        // Revalidate dependent pages to bust cache
+        revalidatePath('/dashboard');
+        revalidatePath('/profile');
 
         return NextResponse.json({
             success: true,

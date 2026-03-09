@@ -39,7 +39,7 @@ export default function ProfilePage() {
 
         async function checkProfile() {
             try {
-                const res = await fetch('/api/profile');
+                const res = await fetch('/api/profile', { cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     if (data.profile) {
@@ -75,8 +75,8 @@ export default function ProfilePage() {
             });
             if (!res.ok) throw new Error('Failed to save profile');
 
-            // Refresh and show the view
-            const profileData = await fetch('/api/profile').then(r => r.json());
+            // Refresh and show the view - use no-store here too
+            const profileData = await fetch('/api/profile', { cache: 'no-store' }).then(r => r.json());
             setExistingProfile(profileData.profile);
             router.refresh();
         } catch (err: any) {

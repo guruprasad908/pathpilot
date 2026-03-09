@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { db } from '../../../../lib/db';
 import { getSession } from '../../../../lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const session = await getSession();

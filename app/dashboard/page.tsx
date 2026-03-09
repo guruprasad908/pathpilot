@@ -100,12 +100,16 @@ export default async function DashboardPage() {
         SELECT 
             ss.subtopic_id,
             n.title as subtopic_title,
+            p.title as planet_title,
+            g.title as galaxy_title,
             COALESCE(SUM(ss.duration_seconds), 0)::INTEGER as total_time,
             COUNT(ss.id)::INTEGER as study_sessions_count
         FROM study_sessions ss
         JOIN roadmap_nodes n ON n.id = ss.subtopic_id
+        LEFT JOIN roadmap_nodes p ON n.parent_id = p.id
+        LEFT JOIN roadmap_nodes g ON p.parent_id = g.id
         WHERE ss.user_id = $1 AND ss.duration_seconds IS NOT NULL
-        GROUP BY ss.subtopic_id, n.title
+        GROUP BY ss.subtopic_id, n.title, p.title, g.title
         ORDER BY total_time DESC
         LIMIT 5
     `, [userId]);
