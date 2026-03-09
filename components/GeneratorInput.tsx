@@ -212,7 +212,7 @@ export default function GeneratorInput() {
         );
     }
 
-    if (scopes && !selectedVideo && videoOptions) {
+    if (scopes && !selectedScope && !selectedVideo && videoOptions) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[55vh] py-12 relative max-w-4xl mx-auto w-full">
                 <div className="text-center mb-12 relative">
