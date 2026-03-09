@@ -271,33 +271,48 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
         }));
 
         return (
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-screen relative">
+                {/* Fixed HUD Button for Mobile */}
+                <div className="fixed top-[72px] right-4 z-50 animate-[fadeIn_0.5s_ease-out_forwards]">
+                    <a
+                        href={roadmap.tutorialVideoUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(roadmap.title)}+full+course+playlist`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-12 h-12 flex items-center justify-center bg-black/90 backdrop-blur-xl border border-red-500/30 rounded-2xl shadow-[0_0_30px_rgba(239,68,68,0.3)] active:scale-95 transition-all"
+                    >
+                        <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+                        </svg>
+                    </a>
+                </div>
                 {/* Scrollable planet list */}
                 <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8 pb-4">
-                    {/* Mastery Briefing Mobile Card */}
-                    {roadmap.tutorialVideoUrl && (
-                        <div className="mb-6 p-5 bg-red-500/5 border border-red-500/20 rounded-2xl animate-[fadeUp_0.5s_ease-out]">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center shrink-0 border border-red-500/20">
-                                    <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
-                                    </svg>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-[10px] font-mono text-red-500 uppercase tracking-[0.2em] mb-1 font-bold">Mastery Briefing</div>
-                                    <div className="text-sm font-bold text-white truncate">{roadmap.tutorialVideoTitle || 'Full YouTube Course'}</div>
-                                </div>
-                                <a 
-                                    href={roadmap.tutorialVideoUrl} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(220,38,38,0.4)]"
-                                >
-                                    Play
-                                </a>
+                    {/* Mastery Briefing Mobile Card - ALWAYS VISIBLE WITH FALLBACK */}
+                    <div className="mb-6 p-5 bg-red-500/5 border border-red-500/20 rounded-2xl animate-[fadeUp_0.5s_ease-out]">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center shrink-0 border border-red-500/20">
+                                <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+                                </svg>
                             </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-[10px] font-mono text-red-500 uppercase tracking-[0.2em] mb-1 font-bold">
+                                    {roadmap.tutorialVideoUrl ? 'Mastery Briefing' : 'Mastery Discovery'}
+                                </div>
+                                <div className="text-sm font-bold text-white truncate">
+                                    {roadmap.tutorialVideoTitle || 'Full YouTube Course'}
+                                </div>
+                            </div>
+                            <a 
+                                href={roadmap.tutorialVideoUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(roadmap.title)}+full+course+playlist`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(220,38,38,0.4)]"
+                            >
+                                Play
+                            </a>
                         </div>
-                    )}
+                    </div>
                     {galaxySections.map((section: any, si: number) => (
                         <section key={si}>
                             {/* Galaxy header */}
