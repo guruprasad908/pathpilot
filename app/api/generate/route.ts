@@ -4,28 +4,21 @@ import { getSession } from '../../../lib/auth';
 import { z } from 'zod';
 import OpenAI from 'openai';
 
-// Initialize OpenAI client
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-const RoadmapSchema = z.object({
+// Recursive tree node schema — supports unlimited depth
+const TreeNodeSchema: z.ZodType<any> = z.lazy(() => z.object({
     title: z.string(),
-    rationale: z.string().optional(),
-    galaxies: z.array(z.object({
-        title: z.string(),
-        focus: z.string().optional(),
-        planets: z.array(z.object({
-            title: z.string(),
-            market_relevance: z.string().optional(),
-            subtopics: z.array(z.object({
-                title: z.string(),
-                description: z.string().optional(),
-                concepts_to_master: z.array(z.string()),
-                key_tools: z.array(z.string()).optional()
-            }))
-        }))
-    }))
+    description: z.string().optional(),
+    children: z.array(TreeNodeSchema).default([])
+}));
+
+const RoadmapTreeSchema = z.object({
+    title: z.string(),
+    description: z.string().optional(),
+    children: z.array(TreeNodeSchema)
 });
 
 // Allow this function to run for up to 60 seconds on Vercel
@@ -45,33 +38,43 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Valid prompt is required' }, { status: 400 });
         }
 
-        const systemPrompt = `You are an expert, Market-Aware Curriculum Architect. Your goal is to tailor a highly relevant, job-ready learning roadmap for the requested topic.
+        const systemPrompt = `You are an expert Curriculum Architect who builds deeply structured learning roadmaps. 
+Your task is to generate a DEEPLY NESTED mind-map style curriculum tree with 5-6 levels of depth.
 
-CRITICAL INSTRUCTIONS:
-- You must adapt the complexity, depth, and size of the roadmap *entirely* based on the user's specific request. If they ask for a "massive", "comprehensive", or "advanced" roadmap, generate a deep curriculum (up to 4 galaxies, 4 planets, 5 subtopics). If they ask for a "quick", "beginner", or "simple" roadmap, generate a focused curriculum (e.g. 2 galaxies, 2 planets, 2 subtopics). If unspecified, aim for a balanced median.
-- Ensure the terminology and progression match the implied level of the request.
-- You must blend Theoretical Foundations, Practical Tooling, and Market Strategy. Make sure the curriculum leads to tangible, job-ready outcomes. 
-- Include the most modern, widely-used industry tools relevant to the request. 
-- Ensure the final node of the roadmap acts as a substantial Capstone Project.
+CRITICAL DEPTH REQUIREMENTS:
+- Level 0: Main chapters/phases (e.g. "Python Fundamentals", "Data Structures", "OOP") — generate 8 to 13 chapters
+- Level 1: Major topics within each chapter (e.g. "What is Python", "Environment Setup") — generate 2 to 5 per chapter
+- Level 2: Subtopics (e.g. "Installing Python", "IDEs", "Package Management") — generate 2 to 4 per topic
+- Level 3: Specific concepts (e.g. "VS Code", "PyCharm", "Jupyter Notebook") — generate 2 to 5 per subtopic
+- Level 4+: Even deeper granular points where relevant (e.g. "pip", "virtualenv", "conda")
 
-Generate a structured learning roadmap for the requested topic. You MUST respond with ONLY valid JSON strictly matching the following schema structure:
+IMPORTANT RULES:
+- Nodes with NO children are "leaf nodes" — these represent the most granular actionable study items
+- Every branch should go AT LEAST 3 levels deep, preferably 4-5
+- Use short, precise titles (2-6 words max)
+- Add a brief "description" field only on level 0 and level 1 nodes
+- Make the curriculum practical, modern, and job-ready
+- Cover the topic comprehensively — don't leave major areas out
+
+You MUST respond with ONLY valid JSON matching this recursive structure:
 {
   "title": "Roadmap Title",
-  "rationale": "Why this learning path is highly relevant in today's job market.",
-  "galaxies": [
+  "description": "Brief overview",
+  "children": [
     {
-      "title": "Galaxy (Major Theme/Phase)",
-      "focus": "e.g., Theoretical Foundation, Tool Mastery, Capstone Project",
-      "planets": [
+      "title": "Chapter Name",
+      "description": "What this chapter covers",
+      "children": [
         {
-          "title": "Planet (Sub-Topic / Milestone)",
-          "market_relevance": "Why employers care about this specific topic right now.",
-          "subtopics": [
-            { 
-              "title": "Specific Concept",
-              "description": "1-2 sentences explaining the concept and its practical application.",
-              "concepts_to_master": ["Detailed syllabus point 1", "Detailed syllabus point 2", "Detailed syllabus point 3", "Detailed syllabus point 4", "Detailed syllabus point 5"],
-              "key_tools": ["Tool1", "Tool2"] 
+          "title": "Topic Name",
+          "description": "Brief description",
+          "children": [
+            {
+              "title": "Subtopic",
+              "children": [
+                { "title": "Concept A", "children": [] },
+                { "title": "Concept B", "children": [] }
+              ]
             }
           ]
         }
@@ -80,19 +83,12 @@ Generate a structured learning roadmap for the requested topic. You MUST respond
   ]
 }`;
 
-        // Call OpenAI and strictly request a JSON object that mimics our schema structure
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             response_format: { type: "json_object" },
             messages: [
-                {
-                    role: 'system',
-                    content: systemPrompt
-                },
-                {
-                    role: 'user',
-                    content: prompt
-                }
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
             ]
         });
 
@@ -101,17 +97,14 @@ Generate a structured learning roadmap for the requested topic. You MUST respond
             throw new Error("No output from OpenAI");
         }
 
-        // Parse the JSON and validate it strongly with Zod
         const parsedJson = JSON.parse(aiOutput);
-        const validatedData = RoadmapSchema.parse(parsedJson);
+        const validatedData = RoadmapTreeSchema.parse(parsedJson);
 
-        // Phase 11: Return the JSON to the frontend instead of saving directly
+        // Return the tree to the frontend for preview before saving
         return NextResponse.json({ success: true, roadmap: validatedData });
 
     } catch (error: any) {
         console.error('AI Generation Failed:', error);
-
-        // Expose error for debugging production
         return NextResponse.json({
             error: 'Failed to generate roadmap',
             details: error?.message || String(error)

@@ -16,14 +16,12 @@ export async function POST(
         const resolvedParams = await params;
         const subtopicId = resolvedParams.id;
 
-        // Verify the subtopic belongs to this user (via roadmap ownership)
+        // Verify the node belongs to this user (via roadmap ownership)
         const ownershipCheck = await db.query(`
-            SELECT s.id
-            FROM subtopics s
-            JOIN planets p ON s.planet_id = p.id
-            JOIN galaxies g ON p.galaxy_id = g.id
-            JOIN roadmaps r ON g.roadmap_id = r.id
-            WHERE s.id = $1 AND r.user_id = $2
+            SELECT n.id
+            FROM roadmap_nodes n
+            JOIN roadmaps r ON n.roadmap_id = r.id
+            WHERE n.id = $1 AND r.user_id = $2
         `, [subtopicId, userId]);
 
         if (ownershipCheck.rows.length === 0) {

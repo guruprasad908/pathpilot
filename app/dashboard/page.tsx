@@ -28,72 +28,54 @@ export default async function DashboardPage() {
         redirect('/profile');
     }
 
-    // 2. Direct Roadmap Query (logic from api/roadmaps/route.ts)
-    const roadmapResult = await db.query(`
-        SELECT 
-            r.id as roadmap_id, r.title as roadmap_title,
-            g.id as galaxy_id, g.title as galaxy_title,
-            p.id as planet_id, p.title as planet_title, p.order_index as planet_order,
-            s.id as subtopic_id, s.title as subtopic_title, s.order_index as subtopic_order,
-            sp.status as progress_status, sp.percent_done
+    // 2. Direct Roadmap Query — now uses roadmap_nodes
+    const roadmapCheck = await db.query(`
+        SELECT r.id, r.title
         FROM roadmaps r
         JOIN users u ON u.id = $1 AND r.id = u.active_roadmap_id
-        LEFT JOIN galaxies g ON g.roadmap_id = r.id
-        LEFT JOIN planets p ON p.galaxy_id = g.id
-        LEFT JOIN subtopics s ON s.planet_id = p.id
-        LEFT JOIN subtopic_progress sp ON sp.subtopic_id = s.id AND sp.user_id = $1
-        ORDER BY r.created_at DESC, g.created_at ASC, p.order_index ASC, s.order_index ASC
     `, [userId]);
 
-    const roadmapsMap = new Map();
-    roadmapResult.rows.forEach(row => {
-        if (!roadmapsMap.has(row.roadmap_id)) {
-            roadmapsMap.set(row.roadmap_id, {
-                id: row.roadmap_id,
-                title: row.roadmap_title,
-                galaxies: new Map()
+    let activeRoadmapData: any = null;
+
+    if (roadmapCheck.rows.length > 0) {
+        const rm = roadmapCheck.rows[0];
+
+        const nodesResult = await db.query(`
+            SELECT 
+                n.id, n.parent_id, n.title, n.depth, n.order_index, n.is_leaf,
+                sp.status as progress_status
+            FROM roadmap_nodes n
+            LEFT JOIN subtopic_progress sp ON sp.subtopic_id = n.id AND sp.user_id = $1
+            WHERE n.roadmap_id = $2
+            ORDER BY n.depth ASC, n.order_index ASC
+        `, [userId, rm.id]);
+
+        const nodesById = new Map<string, any>();
+        const rootNodes: any[] = [];
+
+        for (const row of nodesResult.rows) {
+            nodesById.set(row.id, {
+                id: row.id,
+                parentId: row.parent_id,
+                title: row.title,
+                depth: row.depth,
+                orderIndex: row.order_index,
+                isLeaf: row.is_leaf,
+                status: row.progress_status || 'not_started',
+                children: []
             });
         }
-        const roadmap = roadmapsMap.get(row.roadmap_id);
-        if (row.galaxy_id) {
-            if (!roadmap.galaxies.has(row.galaxy_id)) {
-                roadmap.galaxies.set(row.galaxy_id, {
-                    id: row.galaxy_id,
-                    title: row.galaxy_title,
-                    planets: new Map()
-                });
-            }
-            const galaxy = roadmap.galaxies.get(row.galaxy_id);
-            if (row.planet_id) {
-                if (!galaxy.planets.has(row.planet_id)) {
-                    galaxy.planets.set(row.planet_id, {
-                        id: row.planet_id,
-                        title: row.planet_title,
-                        orderIndex: row.planet_order,
-                        subtopics: []
-                    });
-                }
-                const planet = galaxy.planets.get(row.planet_id);
-                if (row.subtopic_id) {
-                    planet.subtopics.push({
-                        id: row.subtopic_id,
-                        title: row.subtopic_title,
-                        orderIndex: row.subtopic_order,
-                        status: row.progress_status || 'not_started',
-                        percentDone: row.percent_done || 0
-                    });
-                }
+
+        for (const node of nodesById.values()) {
+            if (node.parentId && nodesById.has(node.parentId)) {
+                nodesById.get(node.parentId).children.push(node);
+            } else if (!node.parentId) {
+                rootNodes.push(node);
             }
         }
-    });
 
-    const roadmaps = Array.from(roadmapsMap.values()).map(roadmap => ({
-        ...roadmap,
-        galaxies: Array.from(roadmap.galaxies.values()).map((galaxy: any) => ({
-            ...galaxy,
-            planets: Array.from(galaxy.planets.values())
-        }))
-    }));
+        activeRoadmapData = { id: rm.id, title: rm.title, children: rootNodes };
+    }
 
     // 3. Direct Stats Query
     const statsQuery = await db.query(`
@@ -117,34 +99,34 @@ export default async function DashboardPage() {
     const topStatsResult = await db.query(`
         SELECT 
             ss.subtopic_id,
-            s.title as subtopic_title,
-            p.title as planet_title,
-            g.title as galaxy_title,
+            n.title as subtopic_title,
             COALESCE(SUM(ss.duration_seconds), 0)::INTEGER as total_time,
             COUNT(ss.id)::INTEGER as study_sessions_count
         FROM study_sessions ss
-        JOIN subtopics s ON s.id = ss.subtopic_id
-        JOIN planets p ON p.id = s.planet_id
-        JOIN galaxies g ON g.id = p.galaxy_id
+        JOIN roadmap_nodes n ON n.id = ss.subtopic_id
         WHERE ss.user_id = $1 AND ss.duration_seconds IS NOT NULL
-        GROUP BY ss.subtopic_id, s.title, p.title, g.title
+        GROUP BY ss.subtopic_id, n.title
         ORDER BY total_time DESC
         LIMIT 5
     `, [userId]);
 
     const topStudyStats = { topSubtopics: topStatsResult.rows };
-    const activeRoadmap = roadmaps.length > 0 ? roadmaps[0] : null;
+    const activeRoadmap = activeRoadmapData;
 
+    // Count leaf nodes for completion
     let totalModules = 0;
     let completedModules = 0;
 
+    function countLeaves(node: any) {
+        if (node.isLeaf) {
+            totalModules++;
+            if (node.status === 'completed') completedModules++;
+        }
+        if (node.children) node.children.forEach(countLeaves);
+    }
+
     if (activeRoadmap) {
-        activeRoadmap.galaxies.forEach((galaxy: any) => {
-            galaxy.planets.forEach((planet: any) => {
-                totalModules += planet.subtopics.length;
-                completedModules += planet.subtopics.filter((st: any) => st.status === 'completed').length;
-            });
-        });
+        activeRoadmap.children.forEach(countLeaves);
     }
 
     const completionPercent = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;

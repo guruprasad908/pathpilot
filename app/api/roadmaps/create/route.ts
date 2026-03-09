@@ -1,27 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '../../../../lib/db';
 import { getSession } from '../../../../lib/auth';
-import { z } from 'zod';
-
-// Define the exact schema we expect to receive for a valid roadmap
-const RoadmapSchema = z.object({
-    title: z.string(),
-    rationale: z.string().optional(),
-    galaxies: z.array(z.object({
-        title: z.string(),
-        focus: z.string().optional(),
-        planets: z.array(z.object({
-            title: z.string(),
-            market_relevance: z.string().optional(),
-            subtopics: z.array(z.object({
-                title: z.string(),
-                description: z.string().optional(),
-                concepts_to_master: z.array(z.string()).optional(),
-                key_tools: z.array(z.string()).optional()
-            }))
-        }))
-    }))
-});
 
 export async function POST(req: Request) {
     try {
@@ -32,44 +11,43 @@ export async function POST(req: Request) {
         const userId = session.user_id;
 
         const body = await req.json();
+        const { title, children } = body;
 
-        // Validate incoming structure
-        const validatedData = RoadmapSchema.parse(body);
+        if (!title || !children || !Array.isArray(children)) {
+            return NextResponse.json({ error: 'Invalid roadmap structure' }, { status: 400 });
+        }
 
-        const { title, galaxies } = validatedData;
-
-        // Insert roadmap and tie it to the user
-        const rRes = await db.query(`INSERT INTO roadmaps (title, user_id) VALUES ($1, $2) RETURNING id`, [title, userId]);
+        // Insert roadmap
+        const rRes = await db.query(
+            `INSERT INTO roadmaps (title, user_id) VALUES ($1, $2) RETURNING id`,
+            [title, userId]
+        );
         const roadmapId = rRes.rows[0].id;
 
-        // Set this new roadmap as the user's active roadmap
+        // Set as active roadmap
         await db.query(`UPDATE users SET active_roadmap_id = $1 WHERE id = $2`, [roadmapId, userId]);
 
-        for (let i = 0; i < galaxies.length; i++) {
-            const gRes = await db.query(
-                `INSERT INTO galaxies (roadmap_id, title) VALUES ($1, $2) RETURNING id`,
-                [roadmapId, galaxies[i].title]
-            );
-            const galaxyId = gRes.rows[0].id;
+        // Recursive function to insert tree nodes
+        async function insertNodes(nodes: any[], parentId: string | null, depth: number) {
+            for (let i = 0; i < nodes.length; i++) {
+                const node = nodes[i];
+                const isLeaf = !node.children || node.children.length === 0;
 
-            for (let j = 0; j < galaxies[i].planets.length; j++) {
-                const pRes = await db.query(
-                    `INSERT INTO planets (galaxy_id, title, order_index) VALUES ($1, $2, $3) RETURNING id`,
-                    [galaxyId, galaxies[i].planets[j].title, j]
+                const nRes = await db.query(
+                    `INSERT INTO roadmap_nodes (roadmap_id, parent_id, title, description, depth, order_index, is_leaf)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+                    [roadmapId, parentId, node.title, node.description || null, depth, i, isLeaf]
                 );
-                const planetId = pRes.rows[0].id;
+                const nodeId = nRes.rows[0].id;
 
-                for (let k = 0; k < galaxies[i].planets[j].subtopics.length; k++) {
-                    const sub = galaxies[i].planets[j].subtopics[k];
-                    const conceptsStr = sub.concepts_to_master ? JSON.stringify(sub.concepts_to_master) : '[]';
-                    
-                    await db.query(
-                        `INSERT INTO subtopics (planet_id, title, description, concepts_to_master, order_index) VALUES ($1, $2, $3, $4, $5)`,
-                        [planetId, sub.title, sub.description || null, conceptsStr, k]
-                    );
+                // Recurse into children
+                if (node.children && node.children.length > 0) {
+                    await insertNodes(node.children, nodeId, depth + 1);
                 }
             }
         }
+
+        await insertNodes(children, null, 0);
 
         return NextResponse.json({ success: true, roadmapId });
 

@@ -109,38 +109,77 @@ export default function GeneratorInput() {
 
     const updateTitle = (newTitle: string) => setRoadmapTemplate({ ...roadmapTemplate, title: newTitle });
 
-    const updateGalaxy = (gIndex: number, newTitle: string) => {
-        const newGalaxies = [...roadmapTemplate.galaxies];
-        newGalaxies[gIndex].title = newTitle;
-        setRoadmapTemplate({ ...roadmapTemplate, galaxies: newGalaxies });
+    // Recursive helper to update a node's title by path (array of indices)
+    const updateNodeTitle = (path: number[], newTitle: string) => {
+        const newChildren = JSON.parse(JSON.stringify(roadmapTemplate.children));
+        let target = newChildren;
+        for (let i = 0; i < path.length - 1; i++) {
+            target = target[path[i]].children;
+        }
+        target[path[path.length - 1]].title = newTitle;
+        setRoadmapTemplate({ ...roadmapTemplate, children: newChildren });
     };
 
-    const updatePlanet = (gIndex: number, pIndex: number, newTitle: string) => {
-        const newGalaxies = [...roadmapTemplate.galaxies];
-        newGalaxies[gIndex].planets[pIndex].title = newTitle;
-        setRoadmapTemplate({ ...roadmapTemplate, galaxies: newGalaxies });
+    // Recursive helper to delete a node by path
+    const deleteNode = (path: number[]) => {
+        const newChildren = JSON.parse(JSON.stringify(roadmapTemplate.children));
+        let target = newChildren;
+        for (let i = 0; i < path.length - 1; i++) {
+            target = target[path[i]].children;
+        }
+        target.splice(path[path.length - 1], 1);
+        setRoadmapTemplate({ ...roadmapTemplate, children: newChildren });
     };
 
-    const deletePlanet = (gIndex: number, pIndex: number) => {
-        const newGalaxies = [...roadmapTemplate.galaxies];
-        newGalaxies[gIndex].planets.splice(pIndex, 1);
-        setRoadmapTemplate({ ...roadmapTemplate, galaxies: newGalaxies });
+    // Recursive node renderer for the editable preview
+    const EditableTreeNode = ({ node, path, depth }: { node: any, path: number[], depth: number }) => {
+        const hasChildren = node.children && node.children.length > 0;
+        const indent = depth * 20;
+
+        return (
+            <div style={{ marginLeft: indent }}>
+                <div className={`flex items-center gap-3 py-1.5 group/node ${depth === 0 ? 'mb-1' : ''}`}>
+                    {/* Connector */}
+                    <div className={`shrink-0 rounded-full ${
+                        depth === 0 ? 'w-2 h-2 bg-cyan-500 shadow-[0_0_8px_rgba(34,211,238,0.5)]' :
+                        depth === 1 ? 'w-1.5 h-1.5 bg-zinc-500' :
+                        'w-1 h-1 bg-zinc-700'
+                    }`} />
+                    <input
+                        value={node.title}
+                        onChange={e => updateNodeTitle(path, e.target.value)}
+                        className={`bg-transparent focus:outline-none border-b border-transparent focus:border-white/10 flex-1 py-0.5 transition-all duration-300 ${
+                            depth === 0 ? 'font-extrabold text-white text-[10px] uppercase tracking-widest-xl' :
+                            depth === 1 ? 'font-bold text-zinc-200 text-sm' :
+                            depth === 2 ? 'font-medium text-zinc-300 text-sm' :
+                            'font-light text-zinc-400 text-xs'
+                        }`}
+                    />
+                    <button
+                        onClick={() => deleteNode(path)}
+                        className="text-rose-500/30 hover:text-rose-400 opacity-0 group-hover/node:opacity-100 px-1 text-xs transition-all shrink-0"
+                        title="Remove node"
+                    >
+                        ✕
+                    </button>
+                </div>
+                {node.description && depth <= 1 && (
+                    <p className="text-xs text-zinc-500/80 font-light leading-relaxed ml-[22px] mb-1 max-w-2xl" style={{ marginLeft: indent + 22 }}>
+                        {node.description}
+                    </p>
+                )}
+                {hasChildren && (
+                    <div className="border-l border-white/[0.04]" style={{ marginLeft: indent + 8 }}>
+                        {node.children.map((child: any, cIndex: number) => (
+                            <EditableTreeNode key={cIndex} node={child} path={[...path, cIndex]} depth={depth + 1} />
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
     };
 
-    const updateSubtopic = (gIndex: number, pIndex: number, sIndex: number, newTitle: string) => {
-        const newGalaxies = [...roadmapTemplate.galaxies];
-        newGalaxies[gIndex].planets[pIndex].subtopics[sIndex].title = newTitle;
-        setRoadmapTemplate({ ...roadmapTemplate, galaxies: newGalaxies });
-    };
-
-    const deleteSubtopic = (gIndex: number, pIndex: number, sIndex: number) => {
-        const newGalaxies = [...roadmapTemplate.galaxies];
-        newGalaxies[gIndex].planets[pIndex].subtopics.splice(sIndex, 1);
-        setRoadmapTemplate({ ...roadmapTemplate, galaxies: newGalaxies });
-    };
-
-    // ─── Loading State: Active AI Core Animation ───────────────────────────
-    // ─── Loading State: Active AI Core Animation ───────────────────────────
+    // ─── Loading State ───
     if (isScoping) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] py-20 relative">
@@ -204,13 +243,9 @@ export default function GeneratorInput() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] py-20 relative">
                 <div className="relative w-32 h-32 mb-12">
-                    {/* Outer Ring */}
                     <div className="absolute inset-0 rounded-full border border-cyan-500/20 border-t-cyan-400 animate-spin" style={{ animationDuration: '2s' }} />
-                    {/* Middle Ring */}
                     <div className="absolute inset-4 rounded-full border border-cyan-500/10 border-b-cyan-500/50 animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }} />
-                    {/* Core Pulse */}
                     <div className="absolute inset-[38%] rounded-full bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)] animate-pulse" />
-                    {/* Glow halo */}
                     <div className="absolute inset-8 rounded-full bg-cyan-500/10 animate-ping" />
                 </div>
 
@@ -233,11 +268,9 @@ export default function GeneratorInput() {
         );
     }
 
-    // ─── Generation Form: AI Core Input Interface ──────────────────────────
     if (!roadmapTemplate) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[55vh] py-12 relative">
-                {/* Header */}
                 <div className="text-center mb-16 relative">
                     <div className="flex items-center justify-center gap-3 mb-5">
                         <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.8)] animate-pulse" />
@@ -253,17 +286,13 @@ export default function GeneratorInput() {
                 </div>
 
                 <form onSubmit={handleScope} className="w-full max-w-2xl relative group">
-                    {/* Input glow container */}
                     <div className="relative">
-                        {/* Subtle ambient glow behind input - White/Zinc theme */}
                         <div className="absolute -inset-1 bg-gradient-to-r from-white/10 via-transparent to-white/10 rounded-2xl blur-xl opacity-0 group-focus-within:opacity-100 transition-all duration-700" />
 
                         <div className="relative bg-black/60 backdrop-blur-xl border border-white/5 group-focus-within:border-white/20 rounded-xl overflow-hidden transition-all duration-300 shadow-2xl">
-                            {/* Top accent bar */}
                             <div className="h-px w-full bg-gradient-to-r from-transparent via-cyan-500/0 to-transparent group-focus-within:via-cyan-500/30 transition-all duration-500" />
 
                             <div className="flex items-center gap-4 p-5">
-                                {/* Terminal prompt character */}
                                 <span className="font-mono text-cyan-500 text-xl shrink-0 select-none animate-pulse">›</span>
 
                                 <input
@@ -285,12 +314,10 @@ export default function GeneratorInput() {
                                 </button>
                             </div>
 
-                            {/* Bottom accent bar */}
                             <div className="h-px w-full bg-gradient-to-r from-transparent via-cyan-500/0 to-transparent group-focus-within:via-cyan-500/20 transition-all duration-500" />
                         </div>
                     </div>
 
-                    {/* Hint chips */}
                     <div className="flex flex-wrap gap-2 mt-5 justify-center">
                         {['Python Basics', 'React & Next.js', 'System Design', 'Data Structures'].map((hint) => (
                             <button
@@ -304,7 +331,6 @@ export default function GeneratorInput() {
                         ))}
                     </div>
 
-                    {/* Inline generation error */}
                     {generationError && (
                         <div className="mt-6 flex items-start gap-3 bg-rose-950/20 border border-rose-500/30 text-rose-400 text-xs font-mono px-5 py-4 rounded-xl">
                             <span className="text-rose-500 font-bold mt-0.5">[!]</span>
@@ -320,10 +346,9 @@ export default function GeneratorInput() {
         );
     }
 
-    // ─── Editable Preview: Directive Configuration ─────────────────────────
+    // ─── Editable Preview ───
     return (
         <div className="relative overflow-hidden">
-            {/* Header Bar */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10 pb-8 border-b border-white/5 relative">
                 <div className="absolute bottom-[-1px] left-0 w-24 h-px bg-cyan-500 shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
 
@@ -337,8 +362,8 @@ export default function GeneratorInput() {
                         onChange={e => updateTitle(e.target.value)}
                         className="text-3xl md:text-4xl font-extrabold bg-transparent border-b border-transparent hover:border-zinc-800 focus:border-cyan-500 focus:outline-none text-white w-full py-2 transition-colors duration-200 font-display"
                     />
-                    {roadmapTemplate.rationale && (
-                        <p className="text-zinc-400 text-sm mt-4 leading-relaxed font-light border-l-2 border-cyan-500/30 pl-4">{roadmapTemplate.rationale}</p>
+                    {roadmapTemplate.description && (
+                        <p className="text-zinc-400 text-sm mt-4 leading-relaxed font-light border-l-2 border-cyan-500/30 pl-4">{roadmapTemplate.description}</p>
                     )}
                 </div>
 
@@ -359,113 +384,12 @@ export default function GeneratorInput() {
                 </div>
             </div>
 
-            {/* Galaxy sections */}
-            <div className="space-y-6">
-                {roadmapTemplate.galaxies.map((galaxy: any, gIndex: number) => (
-                    <div key={gIndex} className="bg-black/30 backdrop-blur-sm border border-white/5 rounded-2xl overflow-hidden shadow-panel">
-                        {/* Galaxy header */}
-                        <div className="flex flex-wrap items-center justify-between gap-4 px-8 py-5 border-b border-white/5 bg-zinc-900/40">
-                            <div className="flex items-center gap-4 flex-1 min-w-[200px]">
-                                <div className="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
-                                <input
-                                    value={galaxy.title}
-                                    onChange={e => updateGalaxy(gIndex, e.target.value)}
-                                    className="font-extrabold text-white bg-transparent focus:outline-none border-b border-transparent focus:border-cyan-500/50 w-full text-[10px] uppercase tracking-widest-xl transition-all duration-300"
-                                />
-                            </div>
-                            {galaxy.focus && (
-                                <span className="px-2.5 py-1 bg-cyan-500/10 text-cyan-400 text-[9px] font-bold uppercase tracking-widest rounded border border-cyan-500/20 whitespace-nowrap">
-                                    {galaxy.focus}
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Planets */}
-                        <div className="grid gap-3 p-5">
-                            {galaxy.planets.map((planet: any, pIndex: number) => (
-                                <div key={pIndex} className="bg-zinc-900/10 border border-white/5 rounded-xl p-4 relative group hover:border-white/10 transition-colors">
-                                    <div className="flex flex-col gap-3 mb-3">
-                                        <div className="flex justify-between items-start gap-4">
-                                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                                                <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-white/5 text-zinc-400 text-[10px] font-bold rounded border border-white/10 uppercase tracking-widest-xl shrink-0">
-                                                    <div className="w-1 h-1 rounded-full bg-zinc-400 animate-pulse" />
-                                                    Calibrating Pattern
-                                                </div>
-                                                <input
-                                                    value={planet.title}
-                                                    onChange={e => updatePlanet(gIndex, pIndex, e.target.value)}
-                                                    className="font-bold text-zinc-100 bg-transparent focus:outline-none border-b border-transparent focus:border-white/10 w-full text-sm transition-all duration-300"
-                                                />
-                                            </div>
-                                            <button
-                                                onClick={() => deletePlanet(gIndex, pIndex)}
-                                                className="text-rose-500/40 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all px-2 text-sm shrink-0"
-                                                title="Remove sector"
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                        {planet.market_relevance && (
-                                            <div className="text-xs text-emerald-500/80 bg-emerald-500/5 px-4 py-2.5 rounded-lg border border-emerald-500/10 lg:ml-[160px] mr-8">
-                                                <span className="font-bold mr-2 text-emerald-400 shrink-0">MARKET INTEL:</span>
-                                                <span className="font-light">{planet.market_relevance}</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <ul className="space-y-3 pl-10 border-l border-white/5 ml-4">
-                                        {planet.subtopics.map((subtopic: any, sIndex: number) => (
-                                            <li key={sIndex} className="flex flex-col gap-1.5 group/sub">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-800 shrink-0 group-hover/sub:bg-white/30 transition-colors" />
-                                                    <input
-                                                        value={subtopic.title}
-                                                        onChange={e => updateSubtopic(gIndex, pIndex, sIndex, e.target.value)}
-                                                        className="text-zinc-400 text-sm bg-transparent focus:outline-none border-b border-transparent focus:border-white/5 flex-1 py-1 transition-all duration-300 font-light"
-                                                    />
-                                                    <button
-                                                        onClick={() => deleteSubtopic(gIndex, pIndex, sIndex)}
-                                                        className="text-rose-500/30 hover:text-rose-400 opacity-0 group-hover/sub:opacity-100 px-1 text-xs transition-all shrink-0"
-                                                        title="Remove module"
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                </div>
-                                                {(subtopic.description || (subtopic.key_tools && subtopic.key_tools.length > 0)) && (
-                                                    <div className="ml-[22px] text-xs text-zinc-500/80 mb-2">
-                                                        {subtopic.description && <p className="mb-2 font-light leading-relaxed max-w-2xl">{subtopic.description}</p>}
-                                                        {subtopic.concepts_to_master && subtopic.concepts_to_master.length > 0 && (
-                                                            <div className="mb-3 space-y-1">
-                                                                {subtopic.concepts_to_master.map((concept: string, cIndex: number) => (
-                                                                    <div key={cIndex} className="flex items-start gap-2 text-[11px] text-zinc-400">
-                                                                        <span className="text-cyan-500 mt-0.5 shrink-0">·</span>
-                                                                        <span className="leading-tight">{concept}</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                        {subtopic.key_tools && subtopic.key_tools.length > 0 && (
-                                                            <div className="flex gap-2 flex-wrap">
-                                                                {subtopic.key_tools.map((tool: string, tIndex: number) => (
-                                                                    <span key={tIndex} className="px-2 py-0.5 bg-white/5 text-zinc-300 rounded text-[9px] font-bold uppercase tracking-widest border border-white/10">
-                                                                        {tool}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+            <div className="bg-black/30 backdrop-blur-sm border border-white/5 rounded-2xl overflow-hidden shadow-panel p-6">
+                {roadmapTemplate.children && roadmapTemplate.children.map((node: any, index: number) => (
+                    <EditableTreeNode key={index} node={node} path={[index]} depth={0} />
                 ))}
             </div>
 
-            {/* Footer save bar */}
             <div className="mt-12 pt-8 pb-4 border-t border-white/5 flex justify-end items-center gap-8">
                 <button
                     onClick={() => setRoadmapTemplate(null)}

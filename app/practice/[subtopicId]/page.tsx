@@ -21,12 +21,10 @@ export default async function PracticePage({ params }: { params: Promise<{ subto
 
     // Validate ownership — also fetch roadmap ID so the client can link back
     const res = await db.query(
-        `SELECT s.id as sub_id, s.title, r.user_id, r.id as roadmap_id
-         FROM subtopics s
-         JOIN planets p ON s.planet_id = p.id
-         JOIN galaxies g ON p.galaxy_id = g.id
-         JOIN roadmaps r ON g.roadmap_id = r.id
-         WHERE s.id = $1`,
+        `SELECT n.id as sub_id, n.title, r.user_id, r.id as roadmap_id
+         FROM roadmap_nodes n
+         JOIN roadmaps r ON n.roadmap_id = r.id
+         WHERE n.id = $1`,
         [resolvedParams.subtopicId]
     );
 

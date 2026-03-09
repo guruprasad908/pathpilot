@@ -50,25 +50,21 @@ export async function POST(req: Request) {
         );
         const userAvg = parseFloat(avgRes.rows[0].avg_time) || 0;
 
-        // 2. Fetch subtopic study statistics and roadmap context
+        // 2. Fetch node study statistics and roadmap context
         const statsRes = await db.query(
             `SELECT 
-                s.id, s.title as subtopic_title,
-                p.title as planet_title,
-                g.title as galaxy_title,
+                n.id, n.title as subtopic_title,
                 r.title as roadmap_title,
                 r.user_id as owner_id,
                 COALESCE(pr.status, 'not_started') as status,
                 COALESCE(SUM(ss.duration_seconds), 0) as total_time,
                 COUNT(ss.id) as session_count
-            FROM subtopics s
-            JOIN planets p ON s.planet_id = p.id
-            JOIN galaxies g ON p.galaxy_id = g.id
-            JOIN roadmaps r ON g.roadmap_id = r.id
-            LEFT JOIN subtopic_progress pr ON pr.subtopic_id = s.id AND pr.user_id = $1
-            LEFT JOIN study_sessions ss ON ss.subtopic_id = s.id AND ss.user_id = $1
-            WHERE s.id = $2
-            GROUP BY s.id, p.title, g.title, r.title, r.user_id, pr.status`,
+            FROM roadmap_nodes n
+            JOIN roadmaps r ON n.roadmap_id = r.id
+            LEFT JOIN subtopic_progress pr ON pr.subtopic_id = n.id AND pr.user_id = $1
+            LEFT JOIN study_sessions ss ON ss.subtopic_id = n.id AND ss.user_id = $1
+            WHERE n.id = $2
+            GROUP BY n.id, r.title, r.user_id, pr.status`,
             [userId, subtopicId]
         );
 
@@ -132,7 +128,6 @@ Goal: Create exactly 3 practice problems for a student.
 
 Context:
 - Roadmap: ${stats.roadmap_title}
-- Galaxy: ${stats.galaxy_title}
 - Target Concept: ${stats.subtopic_title}
 - Set Difficulty: ${computedDifficulty}
 - User Profile: ${profile.experience_level || 'beginner'} experience, ${profile.depth_preference || 'balanced'} depth.

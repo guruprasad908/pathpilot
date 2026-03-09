@@ -173,27 +173,17 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
     // Constellation Geometry Logic
     const nodes = useMemo(() => {
         const sequence: any[] = [];
-        if (!roadmap) return [];
-        // Support both galaxies (plural) and Galaxies (PascalCase) from different API versions
-        const galaxies = roadmap.galaxies || roadmap.Galaxies || (Array.isArray(roadmap) ? roadmap : []);
-        if (!galaxies || !Array.isArray(galaxies)) return [];
+        if (!roadmap || !roadmap.children) return [];
 
-        let totalPoints = 0;
-        galaxies.forEach((g: any) => {
-            if (g && g.planets && Array.isArray(g.planets)) {
-                totalPoints += g.planets.length;
-            }
-        });
-
-        const SPACING_X = 400;
-        const VARIANCE_Y = 150; // Reduced from 250 for better stability
-        const DEPTH_RANGE = 100; // Reduced from 150
-
-        let globalIndex = 0;
-        galaxies.forEach((g: any, gIndex: number) => {
-            if (g.planets && Array.isArray(g.planets)) {
-                g.planets.forEach((p: any, pIndex: number) => {
-                    const subtopics = p.subtopics || [];
+        const flattenedSectors: any[] = [];
+        
+        // Roadmap children are Sectors/Galaxies
+        roadmap.children.forEach((sector: any) => {
+            if (sector.children) {
+                // Sector children are Planets
+                sector.children.forEach((planet: any, pIndex: number) => {
+                    const subtopics = planet.children || [];
+                    
                     let status: 'locked' | 'in_progress' | 'completed' = 'locked';
 
                     if (subtopics.length > 0) {
@@ -202,41 +192,52 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
 
                         if (allCompleted) status = 'completed';
                         else if (anyStarted) status = 'in_progress';
+                    } else {
+                        status = planet.status || 'locked';
                     }
 
-                    // Constellation Positioning
-                    // Use a seeded pseudo-randomness for stable layout
-                    const seed = globalIndex * 137.5;
-                    const offsetX = globalIndex * SPACING_X;
-                    const offsetY = (Math.sin(seed) * VARIANCE_Y);
-                    const offsetZ = (Math.cos(seed) * DEPTH_RANGE);
-
-                    sequence.push({
-                        ...p,
+                    flattenedSectors.push({
+                        ...planet,
                         calcStatus: status,
-                        milestoneTitle: pIndex === 0 ? g.title : null,
-                        coords: {
-                            x: offsetX,
-                            y: 400 + offsetY, // Fixed at 400 + offset
-                            z: offsetZ
-                        },
-                        globalIndex
+                        milestoneTitle: pIndex === 0 ? sector.title : null,
+                        subtopics: subtopics
                     });
-                    globalIndex++;
                 });
             }
         });
 
-        // Determine current node
+        const SPACING_X = 400;
+        const VARIANCE_Y = 150; 
+        const DEPTH_RANGE = 100;
+
+        flattenedSectors.forEach((p: any, globalIndex: number) => {
+            const seed = globalIndex * 137.5;
+            const offsetX = globalIndex * SPACING_X;
+            const offsetY = (Math.sin(seed) * VARIANCE_Y);
+            const offsetZ = (Math.cos(seed) * DEPTH_RANGE);
+
+            sequence.push({
+                ...p,
+                coords: {
+                    x: offsetX,
+                    y: 400 + offsetY, 
+                    z: offsetZ
+                },
+                globalIndex
+            });
+        });
+
+        // Determine current "active" node (the next one in line)
         let currentFound = false;
         sequence.forEach((n) => {
-            if (!currentFound && (n.calcStatus === 'locked' || n.calcStatus === 'in_progress')) {
+            if (!currentFound && (n.calcStatus === 'locked' || n.calcStatus === 'in_progress' || n.calcStatus === 'not_started')) {
                 n.isCurrent = true;
                 currentFound = true;
-                if (n.calcStatus === 'locked') n.calcStatus = 'in_progress';
+                if (n.calcStatus === 'locked' || n.calcStatus === 'not_started') n.calcStatus = 'in_progress';
             } else {
                 n.isCurrent = false;
             }
+            if (n.calcStatus === 'not_started') n.calcStatus = 'locked';
         });
 
         return sequence;
@@ -263,10 +264,10 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
 
     // ─── Mobile List View ─────────────────────────────────────────────────
     if (isMobile) {
-        // Group nodes by galaxy title for section headers
-        const galaxySections = roadmap.galaxies.map((g: any) => ({
+        // Group nodes by category title for section headers
+        const galaxySections = roadmap.children.map((g: any) => ({
             title: g.title,
-            planets: nodes.filter((n: any) => n.milestoneTitle !== null || g.planets.some((p: any) => p.id === n.id)).filter((n: any) => g.planets.some((p: any) => p.id === n.id))
+            planets: nodes.filter((n: any) => n.milestoneTitle !== null || g.children?.some((p: any) => p.id === n.id)).filter((n: any) => g.children?.some((p: any) => p.id === n.id))
         }));
 
         return (
@@ -278,7 +279,7 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                             {/* Galaxy header */}
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="h-px flex-1 bg-white/5" />
-                                <span className="text-xs font-mono text-zinc-500 uppercase tracking-widest-xl shrink-0 px-2">
+                                <span className="text-xs font-mono text-zinc-500 uppercase tracking-widest shrink-0 px-2">
                                     {section.title}
                                 </span>
                                 <div className="h-px flex-1 bg-white/5" />
@@ -330,7 +331,7 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                                     </div>
                                                 </div>
                                             </div>
-                                            <span className={`text-xs font-mono uppercase tracking-widest-xl shrink-0 ${statusLabelColor}`}>
+                                            <span className={`text-xs font-mono uppercase tracking-widest shrink-0 ${statusLabelColor}`}>
                                                 {statusLabel}
                                             </span>
                                         </button>
@@ -346,7 +347,7 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                     <div className="fixed bottom-0 left-0 right-0 z-50 p-3 pb-0 animate-[slideUp_0.4s_ease-out_forwards]">
                         <div className="max-w-4xl mx-auto bg-black/90 backdrop-blur-xl border border-b-0 border-white/5 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.8)] relative overflow-hidden">
                             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50" />
-                            <div className="p-4 md:p-6">
+                            <div className="p-4 md:p-6 pb-8">
                                 <button
                                     onClick={() => setSelectedNode(null)}
                                     aria-label="Close panel"
@@ -357,15 +358,14 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
 
                                 <div className="flex items-center gap-3 mb-3">
                                     <h3 className="text-lg font-bold text-white tracking-tight font-display">{selectedNode.title}</h3>
-                                    <span className={`px-2.5 py-1 text-xs uppercase tracking-widest-xl font-bold rounded ${selectedNode.calcStatus === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                    <span className={`px-2.5 py-1 text-xs uppercase tracking-widest font-bold rounded ${selectedNode.calcStatus === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
                                         selectedNode.calcStatus === 'in_progress' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' :
                                             'bg-zinc-800/50 text-zinc-500 border border-white/5'
                                         }`}>
                                         {selectedNode.calcStatus.replace('_', ' ')}
                                     </span>
                                 </div>
-
-                                <div className="grid gap-2 max-h-[45vh] overflow-y-auto pr-1 custom-scrollbar pb-2">
+                                <div className="grid gap-2 max-h-[45vh] overflow-y-auto pr-1 custom-scrollbar pb-2 mt-4">
                                     {selectedNode.subtopics?.map((sub: any, idx: number) => {
                                         const isSubActive = activeSession?.subtopicId === sub.id;
                                         return (
@@ -376,37 +376,57 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                                         <span className="font-medium text-zinc-200 text-sm leading-snug">{sub.title}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5 shrink-0">
-                                                        {sub.status !== 'locked' && sub.status !== 'completed' && (
+                                                        {/* STUDY Focus Timer */}
+                                                        {sub.status === 'locked' ? null : isSubActive ? (
                                                             <button
-                                                                onClick={() => handleMarkComplete(sub.id)}
-                                                                disabled={completingId !== null}
-                                                                aria-label={`Mark "${sub.title}" as complete`}
-                                                                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all border ${completingId === sub.id
-                                                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 cursor-wait'
-                                                                    : 'bg-emerald-500/5 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                                                                    }`}
+                                                                onClick={() => handleEndStudy(sub.id)}
+                                                                className="h-8 px-3 bg-rose-500/10 text-rose-500 border border-rose-500/30 hover:bg-rose-500/20 rounded-lg text-[10px] font-mono font-bold flex items-center justify-center animate-pulse transition-all"
                                                             >
-                                                                {completingId === sub.id
-                                                                    ? <span aria-hidden="true" className="w-3 h-3 border border-emerald-400 border-t-transparent rounded-full animate-spin" />
-                                                                    : <span aria-hidden="true">✓</span>}
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 animate-ping" />
+                                                                {Math.floor(elapsedSeconds / 60).toString().padStart(2, '0')}:{(elapsedSeconds % 60).toString().padStart(2, '0')}
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => handleStartStudy(sub.id)}
+                                                                disabled={activeSession !== null}
+                                                                className="w-8 h-8 rounded-lg flex items-center justify-center border border-white/5 bg-transparent text-zinc-500 hover:text-white hover:border-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                                                aria-label="Start Focus Timer"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+
+                                                        {/* DONE Button */}
+                                                        {sub.status !== 'locked' && (
+                                                            <button 
+                                                                onClick={() => sub.status !== 'completed' && handleMarkComplete(sub.id)}
+                                                                disabled={completingId !== null || sub.status === 'completed'}
+                                                                className={`h-8 px-3 md:px-4 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-1 border ${
+                                                                    sub.status === 'completed' ? 'bg-transparent text-emerald-500/50 border-emerald-500/20 cursor-default' :
+                                                                    'bg-emerald-500/5 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/10 hover:border-emerald-500/40'
+                                                                }`}
+                                                            >
+                                                                {completingId === sub.id ? (
+                                                                    <span className="w-2.5 h-2.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                                                ) : (
+                                                                    <span className="text-sm leading-none">✓</span>
+                                                                )}
                                                                 Done
                                                             </button>
                                                         )}
-                                                        {sub.status === 'completed' && (
-                                                            <span className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                                                ✓ Done
-                                                            </span>
-                                                        )}
+
+                                                        {/* PRACTICE Button */}
                                                         {sub.status !== 'locked' && (
-                                                            <button
+                                                            <button 
                                                                 onClick={() => router.push(`/practice/${sub.id}`)}
-                                                                aria-label={`Practice: ${sub.title}`}
-                                                                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all border ${sub.status === 'completed'
-                                                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                                                                    : 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30'
-                                                                    }`}
+                                                                className={`h-8 px-3 md:px-4 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${
+                                                                    sub.status === 'completed' ? 'bg-transparent text-zinc-500 border-white/10 hover:border-white/20 hover:text-white' :
+                                                                    'bg-transparent text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10 hover:border-cyan-500/50'
+                                                                }`}
                                                             >
-                                                                {sub.status === 'completed' ? 'Review' : 'Practice'}
+                                                                Practice
                                                             </button>
                                                         )}
                                                     </div>
@@ -679,36 +699,7 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                             </div>
                                         </div>
 
-                                        {/* Orbital Subtopic Moons */}
-                                        {!isMobile && (node.subtopics || []).map((sub: any, sIdx: number) => {
-                                            const subtopicsCount = node.subtopics.length;
-                                            const subAngle = (sIdx / subtopicsCount) * 2 * Math.PI;
-                                            const subOrbitRadius = 75; // 100px width = 50 radius + 25 gap
-                                            const subX = 50 + subOrbitRadius * Math.cos(subAngle) - 8; // -8 for half 16px width
-                                            const subY = 50 + subOrbitRadius * Math.sin(subAngle) - 8;
-                                            
-                                            let subColor = "bg-zinc-800 border-zinc-700";
-                                            if (sub.status === 'completed') subColor = "bg-emerald-500 border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]";
-                                            else if (sub.status === 'in_progress') subColor = "bg-cyan-500 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]";
 
-                                            return (
-                                                <div 
-                                                    key={`sub-${sIdx}`}
-                                                    className={`absolute w-[16px] h-[16px] rounded-full border flex items-center justify-center group/submoon ${subColor} hover:scale-125 transition-transform cursor-pointer`}
-                                                    style={{ left: `${subX}px`, top: `${subY}px` }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (sub.status !== 'locked') {
-                                                            router.push(`/practice/${sub.id || roadmap.id}`); 
-                                                        }
-                                                    }}
-                                                >
-                                                   <div className="absolute w-max bg-black/90 border border-white/10 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/submoon:opacity-100 transition-opacity -top-8 pointer-events-none whitespace-nowrap z-20">
-                                                       {sub.title}
-                                                   </div>
-                                                </div>
-                                            )
-                                        })}
                                     </div>
                                 </div>
                             );
@@ -800,124 +791,108 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                 </p>
                             </div>
 
-                            {/* Subtopic List */}
-                            <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
-                                {selectedNode.subtopics?.map((sub: any, idx: number) => {
-                                    const isSubActive = activeSession?.subtopicId === sub.id;
-                                    const sessionCount = sub.sessionCount || 0;
-                                    const totalMinutes = Math.floor((sub.totalTime || 0) / 60);
+                                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-3 custom-scrollbar">
+                                    {selectedNode.subtopics?.map((sub: any, idx: number) => {
+                                        const isSubActive = activeSession?.subtopicId === sub.id;
+                                        const isCompleted = sub.status === 'completed';
+                                        const isLocked = sub.status === 'locked';
 
-                                    return (
-                                        <div
-                                            key={sub.id}
-                                            className="group bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 transition-all hover:bg-white/[0.06] hover:border-white/10"
-                                        >
-                                            <div className="flex items-center justify-between gap-3">
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <span className="font-mono text-[10px] text-zinc-700 group-hover:text-zinc-500 transition-colors shrink-0">
-                                                        {(idx + 1).toString().padStart(2, '0')}
-                                                    </span>
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">
-                                                            {sub.title}
+                                        return (
+                                            <div
+                                                key={sub.id}
+                                                className={`group relative p-5 rounded-2xl border transition-all duration-300 ${
+                                                    isCompleted ? 'bg-black/40 border-white/5' : 
+                                                    isSubActive ? 'bg-cyan-500/5 border-cyan-500/30' : 
+                                                    'bg-zinc-900/40 border-white/5 hover:border-white/10 hover:bg-zinc-900/60'
+                                                }`}
+                                            >
+                                                <div className="flex items-start md:items-center justify-between gap-6 flex-col md:flex-row">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-3 mb-2">
+                                                            <span className="font-mono text-[10px] text-zinc-600 group-hover:text-zinc-500 transition-colors">
+                                                                {(idx + 1).toString().padStart(2, '0')}
+                                                            </span>
+                                                            <div className={`text-base font-bold ${isCompleted ? 'text-zinc-500' : 'text-zinc-100'}`}>
+                                                                {sub.title}
+                                                            </div>
                                                         </div>
-                                                        {sub.description && (
-                                                            <p className="text-xs text-zinc-500 font-light leading-relaxed mt-1.5 max-w-lg">
-                                                                {sub.description}
-                                                            </p>
-                                                        )}
-                                                        {sub.concepts_to_master && sub.concepts_to_master.length > 0 && (
-                                                            <div className="mt-2 space-y-1 border-l border-cyan-500/20 pl-3">
-                                                                <div className="text-[9px] font-mono text-cyan-500/60 uppercase tracking-widest mb-1">Concepts to Master</div>
+                                                        <p className={`text-sm leading-relaxed mb-3 md:mb-0 ml-7 ${isCompleted ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                                                            {sub.description}
+                                                        </p>
+                                                        
+                                                        {sub.concepts_to_master && sub.concepts_to_master.length > 0 && !isCompleted && (
+                                                            <div className="mt-4 ml-7 space-y-2 border-l border-cyan-500/20 pl-4">
+                                                                <div className="text-[10px] font-mono text-cyan-500/80 uppercase tracking-widest">Concepts to Master</div>
                                                                 {sub.concepts_to_master.map((concept: string, cIdx: number) => (
-                                                                    <div key={cIdx} className="flex items-start gap-1.5 text-[11px] text-zinc-400">
-                                                                        <span className="text-cyan-500/50 mt-0.5 shrink-0">·</span>
+                                                                    <div key={cIdx} className="flex items-start gap-2 text-xs text-zinc-300">
+                                                                        <span className="text-cyan-500/50 leading-none mt-0.5">·</span>
                                                                         <span className="leading-snug">{concept}</span>
                                                                     </div>
                                                                 ))}
                                                             </div>
                                                         )}
-                                                        {(sessionCount > 0 || totalMinutes > 0) && (
-                                                            <div className="text-[10px] font-mono text-zinc-700 mt-2 uppercase tracking-wider">
-                                                                {sessionCount > 0 && `${sessionCount} session${sessionCount !== 1 ? 's' : ''}`}
-                                                                {sessionCount > 0 && totalMinutes > 0 && ' · '}
-                                                                {totalMinutes > 0 && `${totalMinutes}m studied`}
-                                                            </div>
-                                                        )}
                                                     </div>
-                                                </div>
 
-                                                <div className="flex items-center gap-2 shrink-0">
-                                                    {/* Study Timer */}
-                                                    {sub.status !== 'locked' && (
-                                                        isSubActive ? (
+                                                    <div className="flex items-center gap-3 shrink-0 ml-7 md:ml-0 md:pl-6">
+                                                        {/* STUDY Focus Timer */}
+                                                        {isLocked ? null : isSubActive ? (
                                                             <button
                                                                 onClick={() => handleEndStudy(sub.id)}
-                                                                className="flex items-center gap-1.5 text-rose-400 text-[10px] font-mono bg-rose-500/10 border border-rose-500/20 px-2.5 py-1.5 rounded-lg hover:bg-rose-500/20 transition-colors"
+                                                                className="h-10 px-4 bg-rose-500/10 text-rose-500 border border-rose-500/30 hover:bg-rose-500/20 rounded-xl text-xs font-mono font-bold flex items-center justify-center animate-pulse transition-all"
                                                             >
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping shrink-0" />
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-2 animate-ping" />
                                                                 {Math.floor(elapsedSeconds / 60).toString().padStart(2, '0')}:{(elapsedSeconds % 60).toString().padStart(2, '0')}
                                                             </button>
                                                         ) : (
                                                             <button
                                                                 onClick={() => handleStartStudy(sub.id)}
                                                                 disabled={activeSession !== null}
-                                                                className={`text-[10px] font-mono px-2.5 py-1.5 rounded-lg transition-all border ${activeSession
-                                                                    ? 'text-zinc-700 border-white/5 cursor-not-allowed'
-                                                                    : 'text-zinc-500 border-white/5 hover:text-emerald-300 hover:border-emerald-500/30 hover:bg-emerald-500/5'
-                                                                    }`}
+                                                                className="w-10 h-10 rounded-xl flex items-center justify-center border border-white/5 bg-transparent text-zinc-500 hover:text-white hover:border-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                                                aria-label="Start Focus Timer"
                                                             >
-                                                                ⏱
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
                                                             </button>
-                                                        )
-                                                    )}
+                                                        )}
 
-                                                    {/* Mark Complete */}
-                                                    {sub.status !== 'locked' && sub.status !== 'completed' && (
-                                                        <button
-                                                            onClick={() => handleMarkComplete(sub.id)}
-                                                            disabled={completingId !== null}
-                                                            aria-label={`Mark "${sub.title}" as complete`}
-                                                            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all border ${completingId === sub.id
-                                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 cursor-wait'
-                                                                : 'bg-emerald-500/5 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-400/50 hover:shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                                                        {/* DONE Button */}
+                                                        {!isLocked && (
+                                                            <button 
+                                                                onClick={() => !isCompleted && handleMarkComplete(sub.id)}
+                                                                disabled={completingId !== null || isCompleted}
+                                                                className={`h-10 px-6 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 border ${
+                                                                    isCompleted ? 'bg-transparent text-emerald-500/50 border-emerald-500/20 cursor-default' :
+                                                                    'bg-emerald-500/5 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/10 hover:border-emerald-500/40'
                                                                 }`}
-                                                        >
-                                                            {completingId === sub.id ? (
-                                                                <span aria-hidden="true" className="w-3 h-3 border border-emerald-400 border-t-transparent rounded-full animate-spin" />
-                                                            ) : (
-                                                                <span aria-hidden="true">✓</span>
-                                                            )}
-                                                            Done
-                                                        </button>
-                                                    )}
+                                                            >
+                                                                {completingId === sub.id ? (
+                                                                    <span className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                                                ) : (
+                                                                    <span className="text-sm leading-none">✓</span>
+                                                                )}
+                                                                Done
+                                                            </button>
+                                                        )}
 
-                                                    {/* Status Badge */}
-                                                    {sub.status === 'completed' && (
-                                                        <span className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                                            ✓ Completed
-                                                        </span>
-                                                    )}
-
-                                                    {/* Practice Button */}
-                                                    <button
-                                                        onClick={() => router.push(`/practice/${sub.id}`)}
-                                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all ${sub.status === 'locked'
-                                                            ? 'opacity-40 cursor-not-allowed bg-zinc-800 text-zinc-600'
-                                                            : sub.status === 'completed'
-                                                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-400 hover:text-black'
-                                                                : 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-400 hover:text-black hover:shadow-[0_0_15px_rgba(34,211,238,0.4)]'
-                                                            }`}
-                                                        disabled={sub.status === 'locked'}
-                                                    >
-                                                        {sub.status === 'completed' ? 'Review' : 'Practice'}
-                                                    </button>
+                                                        {/* PRACTICE Button */}
+                                                        {!isLocked && (
+                                                            <button 
+                                                                onClick={() => router.push(`/practice/${sub.id}`)}
+                                                                className={`h-10 px-6 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all border ${
+                                                                    isCompleted ? 'bg-transparent text-zinc-500 border-white/10 hover:border-white/20 hover:text-white' :
+                                                                    'bg-transparent text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10 hover:border-cyan-500/50'
+                                                                }`}
+                                                            >
+                                                                Practice
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
                         </div>
                     </div>
                 </div>
