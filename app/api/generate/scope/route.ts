@@ -22,10 +22,19 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Valid prompt is required' }, { status: 400 });
         }
 
-        const systemPrompt = `You are a Career Architect. A user wants to learn a topic. Your job is to return 3 to 4 learning paths. 
-CRITICAL: The very first path MUST ALWAYS be a generic, foundational, general-purpose approach to the input.
-The remaining 2-3 paths should be specific, high-value career paths or highly focused niches related to their exact input.
-Do not generate a roadmap. Generate ONLY a JSON object containing an array of specific goals.
+        const systemPrompt = `You are a Career Architect. A user wants to learn a topic. Your job is to:
+1. Return 3 to 4 learning paths. **CRITICAL: The very first path MUST ALWAYS be a generic, foundational, general-purpose approach to the input.** The remaining paths should be specific career niches.
+2. Return a list of exactly 4 high-quality tutorial videos or comprehensive "masterclass" learning resources for this general topic from reputable sources (e.g. YouTube, FreeCodeCamp, Harvard CS50, or similar).
+
+Respond ONLY with valid JSON strictly matching this structure:
+{
+  "paths": [
+    { "title": "...", "description": "..." }
+  ],
+  "videos": [
+    { "title": "...", "url": "..." }
+  ]
+}
 
 Example for "Python":
 {
@@ -37,19 +46,21 @@ Example for "Python":
     {
       "title": "Python for Data Science & AI",
       "description": "Focus on pandas, numpy, and machine learning models."
+    }
+  ],
+  "videos": [
+    {
+      "title": "Python Tutorial for Beginners (Full Course)",
+      "url": "https://www.youtube.com/results?search_query=python+tutorial+for+beginners+full+course"
     },
     {
-      "title": "Python for Full-Stack Web Development",
-      "description": "Focus on Django, FastAPI, and robust backend engineering."
-    },
-    {
-      "title": "Python for Automation & Scripting",
-      "description": "Focus on web scraping, task automation, and DevOps."
+      "title": "Harvard CS50P: Introduction to Programming with Python",
+      "url": "https://www.youtube.com/results?search_query=CS50P+full+course"
     }
   ]
 }
 
-Respond ONLY with valid JSON strictly matching the { "paths": [{ "title": "...", "description": "..." }] } structure. Return exactly 3 to 4 paths.`;
+Respond ONLY with valid JSON. Return exactly 3-4 paths and exactly 4 videos.`;
 
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',

@@ -11,7 +11,7 @@ export async function POST(req: Request) {
         const userId = session.user_id;
 
         const body = await req.json();
-        const { title, children } = body;
+        const { title, children, tutorial_video_url, tutorial_video_title } = body;
 
         if (!title || !children || !Array.isArray(children)) {
             return NextResponse.json({ error: 'Invalid roadmap structure' }, { status: 400 });
@@ -19,8 +19,8 @@ export async function POST(req: Request) {
 
         // Insert roadmap
         const rRes = await db.query(
-            `INSERT INTO roadmaps (title, user_id) VALUES ($1, $2) RETURNING id`,
-            [title, userId]
+            `INSERT INTO roadmaps (title, user_id, tutorial_video_url, tutorial_video_title) VALUES ($1, $2, $3, $4) RETURNING id`,
+            [title, userId, tutorial_video_url || null, tutorial_video_title || null]
         );
         const roadmapId = rRes.rows[0].id;
 

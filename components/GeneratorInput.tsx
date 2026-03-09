@@ -7,6 +7,9 @@ export default function GeneratorInput() {
     const [prompt, setPrompt] = useState('');
     const [isScoping, setIsScoping] = useState(false);
     const [scopes, setScopes] = useState<{title: string, description: string}[] | null>(null);
+    const [selectedScope, setSelectedScope] = useState<{title: string, description: string} | null>(null);
+    const [videoOptions, setVideoOptions] = useState<{title: string, url: string}[] | null>(null);
+    const [selectedVideo, setSelectedVideo] = useState<{title: string, url: string} | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [roadmapTemplate, setRoadmapTemplate] = useState<any | null>(null);
@@ -21,6 +24,7 @@ export default function GeneratorInput() {
 
         setIsScoping(true);
         setScopes(null);
+        setVideoOptions(null);
         setGenerationError('');
 
         try {
@@ -37,6 +41,7 @@ export default function GeneratorInput() {
             }
 
             if (resData.paths) setScopes(resData.paths);
+            if (resData.videos) setVideoOptions(resData.videos);
         } catch (err: any) {
             setGenerationError(err.message || 'AI scoping failed. Please try again.');
         } finally {
@@ -47,6 +52,7 @@ export default function GeneratorInput() {
     const handleGenerate = async (finalPrompt: string) => {
         setIsLoading(true);
         setScopes(null);
+        // We keep videoOptions and selectedVideo here
         setRoadmapTemplate(null);
         setGenerationError('');
 
@@ -66,11 +72,18 @@ export default function GeneratorInput() {
             const resData = await res.json();
 
             if (!res.ok) {
-                // Read the precise error details sent from the server
                 throw new Error(resData.details || resData.error || 'Failed to generate roadmap');
             }
 
-            if (resData.roadmap) setRoadmapTemplate(resData.roadmap);
+            if (resData.roadmap) {
+                // Attach the selected video to the template
+                const template = {
+                    ...resData.roadmap,
+                    tutorial_video_url: selectedVideo?.url || null,
+                    tutorial_video_title: selectedVideo?.title || null
+                };
+                setRoadmapTemplate(template);
+            }
         } catch (err: any) {
             if (err.name === 'AbortError') {
                 setGenerationError('Request timed out or was cancelled. Please try again.');
@@ -199,20 +212,20 @@ export default function GeneratorInput() {
         );
     }
 
-    if (scopes) {
+    if (scopes && !selectedVideo && videoOptions) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[55vh] py-12 relative max-w-4xl mx-auto">
+            <div className="flex flex-col items-center justify-center min-h-[55vh] py-12 relative max-w-4xl mx-auto w-full">
                 <div className="text-center mb-12 relative">
                     <div className="flex items-center justify-center gap-3 mb-5">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse" />
-                        <span className="font-mono text-xs text-emerald-500 uppercase tracking-widest-xl">Target Acquisition</span>
+                        <span className="font-mono text-xs text-emerald-500 uppercase tracking-widest-xl">Step 1: Specialization</span>
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse" />
                     </div>
                     <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4 font-display">
                         Select Your Specialization
                     </h2>
                     <p className="text-zinc-400 text-base max-w-xl leading-relaxed font-light mx-auto">
-                        We identified multiple high-value career paths for this topic. Which trajectory aligns with your goals?
+                        Which trajectory aligns with your professional or personal goals?
                     </p>
                 </div>
 
@@ -220,10 +233,10 @@ export default function GeneratorInput() {
                     {scopes.map((scope, idx) => (
                         <button
                             key={idx}
-                            onClick={() => handleGenerate(`Topic: ${prompt}. Focus: ${scope.title}. Context: ${scope.description}`)}
+                            onClick={() => setSelectedScope(scope)}
                             className="bg-zinc-900/60 border border-white/5 hover:border-emerald-500/50 rounded-xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(16,185,129,0.1)] group"
                         >
-                            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">{scope.title}</h3>
+                            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors uppercase tracking-tight">{scope.title}</h3>
                             <p className="text-zinc-400 text-sm font-light leading-relaxed">{scope.description}</p>
                         </button>
                     ))}
@@ -234,6 +247,61 @@ export default function GeneratorInput() {
                     className="mt-10 text-zinc-500 hover:text-white text-xs font-mono uppercase tracking-widest-xl transition-colors"
                 >
                     ← Back to Input
+                </button>
+            </div>
+        );
+    }
+
+    if (selectedScope && !roadmapTemplate && !isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[55vh] py-12 relative max-w-4xl mx-auto w-full">
+                <div className="text-center mb-12 relative">
+                    <div className="flex items-center justify-center gap-3 mb-5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.8)] animate-pulse" />
+                        <span className="font-mono text-xs text-cyan-500 uppercase tracking-widest-xl">Step 2: Source Intelligence</span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.8)] animate-pulse" />
+                    </div>
+                    <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4 font-display">
+                        Select a Core Tutorial
+                    </h2>
+                    <p className="text-zinc-400 text-base max-w-xl leading-relaxed font-light mx-auto">
+                        Pick a high-quality video guide to serve as your primary briefing for the <span className="text-cyan-400 font-bold">{selectedScope.title}</span> mission.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 w-full max-w-2xl">
+                    {videoOptions?.map((video, idx) => (
+                        <button
+                            key={idx}
+                            onClick={() => {
+                                setSelectedVideo(video);
+                                handleGenerate(`Topic: ${prompt}. Focus: ${selectedScope.title}. Context: ${selectedScope.description}. Chosen Video: ${video.title}`);
+                            }}
+                            className="bg-zinc-900/60 border border-white/5 hover:border-cyan-500/50 rounded-xl p-5 text-left transition-all hover:bg-zinc-800/80 hover:shadow-lg group flex items-center justify-between"
+                        >
+                            <div>
+                                <h3 className="text-white font-bold group-hover:text-cyan-400 transition-colors text-sm">{video.title}</h3>
+                                <p className="text-zinc-500 text-[10px] font-mono mt-1 uppercase tracking-widest leading-none">External Intelligence Source</p>
+                            </div>
+                            <span className="text-cyan-500/30 group-hover:text-cyan-400 transition-colors">→</span>
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => {
+                            setSelectedVideo({ title: 'Standard Curriculum', url: '' });
+                            handleGenerate(`Topic: ${prompt}. Focus: ${selectedScope.title}. Context: ${selectedScope.description}`);
+                        }}
+                        className="mt-4 bg-transparent border border-white/5 hover:border-white/20 rounded-xl p-4 text-center text-zinc-500 hover:text-white text-xs font-mono uppercase tracking-widest-xl transition-all"
+                    >
+                        Skip Video Selection
+                    </button>
+                </div>
+
+                <button
+                    onClick={() => setSelectedScope(null)}
+                    className="mt-10 text-zinc-500 hover:text-white text-xs font-mono uppercase tracking-widest-xl transition-colors"
+                >
+                    ← Back to Specialization
                 </button>
             </div>
         );

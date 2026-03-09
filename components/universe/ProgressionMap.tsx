@@ -579,6 +579,28 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                             </div>
                         )}
 
+                        {/* Tutorial HUD Button */}
+                        {roadmap.tutorialVideoUrl && (
+                            <div className="fixed top-24 right-8 z-40 hidden md:block animate-[fadeIn_0.5s_ease-out_forwards]">
+                                <a
+                                    href={roadmap.tutorialVideoUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group flex items-center gap-4 px-5 py-3 bg-black/60 backdrop-blur-md border border-white/5 hover:border-cyan-500/50 rounded-2xl transition-all duration-300 shadow-2xl hover:-translate-y-0.5"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center group-hover:bg-cyan-500/20 transition-colors">
+                                        <svg className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+                                        </svg>
+                                    </div>
+                                    <div className="text-left">
+                                        <div className="text-[10px] font-mono text-cyan-500 uppercase tracking-widest leading-none mb-1 opacity-60">Mastery Briefing</div>
+                                        <div className="text-xs font-bold text-white uppercase tracking-wider">{roadmap.tutorialVideoTitle || 'Tutorial'}</div>
+                                    </div>
+                                </a>
+                            </div>
+                        )}
+
                         {/* Node Render Loop */}
                         {nodes.map((node, i) => {
                             const isLocked = node.calcStatus === 'locked';
@@ -786,9 +808,32 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                 <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-3">
                                     {selectedNode.title}
                                 </h3>
-                                <p className="text-zinc-500 text-sm leading-relaxed font-light">
+                                <p className="text-zinc-500 text-sm leading-relaxed font-light mb-6">
                                     {selectedNode.description || `Execute all sub-protocols in the ${selectedNode.title} sector to advance your trajectory.`}
                                 </p>
+
+                                {/* Tutorial Shortcut in Modal */}
+                                {roadmap.tutorialVideoUrl && (
+                                    <div className="flex items-center gap-4 p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-2xl mb-2 group/vid">
+                                        <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center shrink-0 border border-cyan-500/20">
+                                            <svg className="w-4 h-4 text-cyan-400" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+                                            </svg>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-[10px] font-mono text-cyan-500/60 uppercase tracking-widest mb-0.5">Mastery Briefing</div>
+                                            <div className="text-xs font-bold text-zinc-100 truncate">{roadmap.tutorialVideoTitle || 'Featured Tutorial'}</div>
+                                        </div>
+                                        <a 
+                                            href={roadmap.tutorialVideoUrl} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 hover:border-cyan-500/40 text-cyan-400 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all"
+                                        >
+                                            Watch Now
+                                        </a>
+                                    </div>
+                                )}
                             </div>
 
                                 <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-3 custom-scrollbar">

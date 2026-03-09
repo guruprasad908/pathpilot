@@ -15,12 +15,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
         // Verify ownership
         const roadmapCheck = await db.query(
-            `SELECT id, title FROM roadmaps WHERE id = $1 AND user_id = $2`,
+            `SELECT id, title, tutorial_video_url, tutorial_video_title FROM roadmaps WHERE id = $1 AND user_id = $2`,
             [roadmapId, userId]
         );
         if (roadmapCheck.rows.length === 0) {
             return NextResponse.json({ error: 'Roadmap not found' }, { status: 404 });
         }
+
+        const roadmapData = roadmapCheck.rows[0];
 
         // Fetch all nodes flat + progress + study data
         const result = await db.query(`
@@ -77,8 +79,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         }
 
         return NextResponse.json({
-            id: roadmapCheck.rows[0].id,
-            title: roadmapCheck.rows[0].title,
+            id: roadmapData.id,
+            title: roadmapData.title,
+            tutorialVideoUrl: roadmapData.tutorial_video_url,
+            tutorialVideoTitle: roadmapData.tutorial_video_title,
             children: rootNodes
         });
 
