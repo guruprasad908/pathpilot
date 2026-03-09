@@ -262,10 +262,10 @@ export default function GeneratorInput() {
                         <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.8)] animate-pulse" />
                     </div>
                     <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4 font-display">
-                        Select a Core Tutorial
+                        Select a Full Course Masterclass
                     </h2>
                     <p className="text-zinc-400 text-base max-w-xl leading-relaxed font-light mx-auto">
-                        Pick a high-quality video guide to serve as your primary briefing for the <span className="text-cyan-400 font-bold">{selectedScope.title}</span> mission.
+                        Pick a comprehensive, full-length YouTube course to serve as your primary briefing for the <span className="text-cyan-400 font-bold">{selectedScope.title}</span> mission.
                     </p>
                 </div>
 
@@ -281,7 +281,7 @@ export default function GeneratorInput() {
                         >
                             <div>
                                 <h3 className="text-white font-bold group-hover:text-cyan-400 transition-colors text-sm">{video.title}</h3>
-                                <p className="text-zinc-500 text-[10px] font-mono mt-1 uppercase tracking-widest leading-none">External Intelligence Source</p>
+                                <p className="text-red-500/80 text-[10px] font-mono mt-1 uppercase tracking-widest leading-none font-bold">Full Duration YouTube Course</p>
                             </div>
                             <span className="text-cyan-500/30 group-hover:text-cyan-400 transition-colors">→</span>
                         </button>

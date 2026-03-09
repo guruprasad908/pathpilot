@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
         const systemPrompt = `You are a Career Architect. A user wants to learn a topic. Your job is to:
 1. Return 3 to 4 learning paths. **CRITICAL: The very first path MUST ALWAYS be a generic, foundational, general-purpose approach to the input.** The remaining paths should be specific career niches.
-2. Return a list of exactly 4 high-quality tutorial videos or comprehensive "masterclass" learning resources for this general topic from reputable sources (e.g. YouTube, FreeCodeCamp, Harvard CS50, or similar).
+2. Return a list of exactly 4 high-quality tutorial videos or playlists. **CRITICAL: You MUST provide DIRECT LINKS to YouTube videos or playlists (e.g. https://www.youtube.com/watch?v=... or https://www.youtube.com/playlist?list=...). DO NOT provide results search pages.** Prioritize "Full Course", "Complete Playlist", or "Masterclass" content that is highly comprehensive.
 
 Respond ONLY with valid JSON strictly matching this structure:
 {
@@ -42,20 +42,16 @@ Example for "Python":
     {
       "title": "Core Python Fundamentals",
       "description": "A general-purpose foundation covering syntax, data structures, OOP, and standard libraries without specializing in any specific industry."
-    },
-    {
-      "title": "Python for Data Science & AI",
-      "description": "Focus on pandas, numpy, and machine learning models."
     }
   ],
   "videos": [
     {
-      "title": "Python Tutorial for Beginners (Full Course)",
-      "url": "https://www.youtube.com/results?search_query=python+tutorial+for+beginners+full+course"
+      "title": "Python for Beginners (Full Course)",
+      "url": "https://www.youtube.com/watch?v=rfscVS0vtbw"
     },
     {
-      "title": "Harvard CS50P: Introduction to Programming with Python",
-      "url": "https://www.youtube.com/results?search_query=CS50P+full+course"
+      "title": "Python Programming Masterclass (Playlist)",
+      "url": "https://www.youtube.com/playlist?list=PL-osiE80TeTskra39S8qS6v6f6uAtzU-V"
     }
   ]
 }

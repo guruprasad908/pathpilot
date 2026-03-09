@@ -276,22 +276,22 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                 <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8 pb-4">
                     {/* Mastery Briefing Mobile Card */}
                     {roadmap.tutorialVideoUrl && (
-                        <div className="mb-6 p-5 bg-cyan-500/5 border border-cyan-500/20 rounded-2xl animate-[fadeUp_0.5s_ease-out]">
+                        <div className="mb-6 p-5 bg-red-500/5 border border-red-500/20 rounded-2xl animate-[fadeUp_0.5s_ease-out]">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center shrink-0 border border-cyan-500/20">
-                                    <svg className="w-6 h-6 text-cyan-400" fill="currentColor" viewBox="0 0 20 20">
+                                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center shrink-0 border border-red-500/20">
+                                    <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
                                     </svg>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <div className="text-[10px] font-mono text-cyan-500 uppercase tracking-[0.2em] mb-1">Mastery Briefing</div>
-                                    <div className="text-sm font-bold text-white truncate">{roadmap.tutorialVideoTitle || 'Featured Tutorial'}</div>
+                                    <div className="text-[10px] font-mono text-red-500 uppercase tracking-[0.2em] mb-1 font-bold">Mastery Briefing</div>
+                                    <div className="text-sm font-bold text-white truncate">{roadmap.tutorialVideoTitle || 'Full YouTube Course'}</div>
                                 </div>
                                 <a 
                                     href={roadmap.tutorialVideoUrl} 
                                     target="_blank" 
                                     rel="noopener noreferrer"
-                                    className="px-4 py-2 bg-cyan-400 text-black rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(34,211,238,0.4)]"
+                                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(220,38,38,0.4)]"
                                 >
                                     Play
                                 </a>
@@ -488,6 +488,29 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
         <div
             className="w-full h-full relative border-0 bg-transparent"
         >
+            {/* Tutorial HUD Button - FIXED POSITION */}
+            <div className="fixed top-[72px] md:top-24 right-4 md:right-8 z-50 animate-[fadeIn_0.5s_ease-out_forwards]">
+                <a
+                    href={roadmap.tutorialVideoUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(roadmap.title)}+full+course+playlist`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center gap-3 md:gap-4 px-4 md:px-5 py-2 md:py-3 bg-black/90 backdrop-blur-xl border border-red-500/30 hover:border-red-500 rounded-2xl transition-all duration-300 shadow-[0_0_40px_rgba(0,0,0,0.8)] hover:-translate-y-1"
+                >
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center group-hover:bg-red-500/30 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                        <svg className="w-4 h-4 md:w-5 md:h-5 text-red-500 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+                        </svg>
+                    </div>
+                    <div className="text-left">
+                        <div className="text-[9px] md:text-[10px] font-mono text-red-500 uppercase tracking-widest leading-none mb-1 font-bold">
+                            {roadmap.tutorialVideoUrl ? 'Mastery Briefing' : 'Mastery Discovery'}
+                        </div>
+                        <div className="text-[10px] md:text-xs font-bold text-white uppercase tracking-wider max-w-[120px] md:max-w-[200px] truncate">
+                            {roadmap.tutorialVideoTitle || 'Find Full Course'}
+                        </div>
+                    </div>
+                </a>
+            </div>
             <div
                 className="relative w-full h-full border-0 bg-black/95"
             >
@@ -600,28 +623,6 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                 <span className="text-zinc-600 font-mono text-[10px] uppercase tracking-widest-xl">
                                     [!] No trajectory nodes detected in this sector
                                 </span>
-                            </div>
-                        )}
-
-                        {/* Tutorial HUD Button */}
-                        {roadmap.tutorialVideoUrl && (
-                            <div className="fixed top-[72px] md:top-24 right-4 md:right-8 z-40 animate-[fadeIn_0.5s_ease-out_forwards]">
-                                <a
-                                    href={roadmap.tutorialVideoUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group flex items-center gap-3 md:gap-4 px-4 md:px-5 py-2 md:py-3 bg-black/80 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-500 rounded-2xl transition-all duration-300 shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:-translate-y-0.5"
-                                >
-                                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center group-hover:bg-cyan-500/30 transition-colors shadow-[0_0_15px_rgba(34,211,238,0.3)]">
-                                        <svg className="w-4 h-4 md:w-5 md:h-5 text-cyan-400 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
-                                        </svg>
-                                    </div>
-                                    <div className="text-left">
-                                        <div className="text-[9px] md:text-[10px] font-mono text-cyan-400 uppercase tracking-widest leading-none mb-1 font-bold">Mastery Briefing</div>
-                                        <div className="text-[10px] md:text-xs font-bold text-white uppercase tracking-wider max-w-[120px] md:max-w-[180px] truncate">{roadmap.tutorialVideoTitle || 'Tutorial'}</div>
-                                    </div>
-                                </a>
                             </div>
                         )}
 
