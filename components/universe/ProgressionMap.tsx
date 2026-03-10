@@ -16,6 +16,13 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
     const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
     const [completingId, setCompletingId] = useState<string | null>(null);
 
+    // Editing states
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editTitle, setEditTitle] = useState('');
+    const [editDesc, setEditDesc] = useState('');
+    const [isSavingEdit, setIsSavingEdit] = useState(false);
+    const [isAddingTopic, setIsAddingTopic] = useState(false);
+
     // Interaction states
     const [ripples, setRipples] = useState<{ id: string, x: number, y: number }[]>([]);
     const isDragging = useRef(false);
@@ -26,6 +33,140 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
     const [isMobile, setIsMobile] = useState(false);
     const [showScrollStart, setShowScrollStart] = useState(false);
     const [showScrollEnd, setShowScrollEnd] = useState(false);
+
+    // Recursive Node Row for Mission Manifest
+    const NodeRow = ({ node, index, depth = 0 }: { node: any, index: number, depth?: number }) => {
+        const isSubActive = activeSession?.subtopicId === node.id;
+        const isCompleted = node.status === 'completed';
+        const isLocked = node.status === 'locked';
+        const hasChildren = node.children && node.children.length > 0;
+
+        return (
+            <div className="space-y-3">
+                <div
+                    className={`group relative p-4 rounded-xl border transition-all duration-300 ${
+                        isCompleted ? 'bg-black/40 border-white/5' : 
+                        isSubActive ? 'bg-cyan-500/5 border-cyan-500/30' : 
+                        'bg-zinc-900/40 border-white/5 hover:border-white/10 hover:bg-zinc-900/60'
+                    }`}
+                    style={{ marginLeft: `${depth * 20}px` }}
+                >
+                    <div className="flex items-start md:items-center justify-between gap-6 flex-col md:flex-row">
+                        <div className="flex-1 min-w-0">
+                            {editingId === node.id ? (
+                                <div className="space-y-4 animate-[fadeUp_0.3s_ease-out]">
+                                    <input
+                                        autoFocus
+                                        value={editTitle}
+                                        onChange={e => setEditTitle(e.target.value)}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold text-sm focus:border-cyan-500/50 outline-none"
+                                        placeholder="Topic Title"
+                                    />
+                                    <textarea
+                                        value={editDesc}
+                                        onChange={e => setEditDesc(e.target.value)}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-zinc-300 text-xs focus:border-cyan-500/50 outline-none h-20"
+                                        placeholder="Description (optional)"
+                                    />
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => handleEditSave(node.id)}
+                                            disabled={isSavingEdit}
+                                            className="px-4 py-1.5 bg-cyan-500 text-black rounded-lg text-[10px] font-bold uppercase tracking-widest"
+                                        >
+                                            {isSavingEdit ? '...' : 'Save'}
+                                        </button>
+                                        <button
+                                            onClick={() => setEditingId(null)}
+                                            className="px-4 py-1.5 bg-zinc-800 text-zinc-400 rounded-lg text-[10px] font-bold uppercase tracking-widest"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <span className="font-mono text-[10px] text-zinc-600 group-hover:text-zinc-500 transition-colors">
+                                            {(index + 1).toString().padStart(2, '0')}
+                                        </span>
+                                        <div className={`text-base font-bold ${isCompleted ? 'text-zinc-500' : 'text-zinc-100'}`}>
+                                            {node.title}
+                                            {hasChildren && <span className="ml-2 text-[10px] text-cyan-500/50 uppercase font-mono">[{node.children.length} Units]</span>}
+                                        </div>
+                                        <div className="flex items-center gap-2 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => {
+                                                    setEditingId(node.id);
+                                                    setEditTitle(node.title);
+                                                    setEditDesc(node.description || '');
+                                                    setIsAddingTopic(false);
+                                                }}
+                                                className="text-[9px] font-mono text-zinc-600 hover:text-white uppercase"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteNode(node.id)}
+                                                className="text-[9px] font-mono text-rose-500/40 hover:text-rose-400 uppercase"
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p className={`text-sm leading-relaxed mb-3 md:mb-0 ml-7 ${isCompleted ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                                        {node.description}
+                                    </p>
+                                </>
+                            )}
+                        </div>
+
+                        {!editingId && node.isLeaf && (
+                            <div className="flex items-center gap-3 self-end md:self-center">
+                                {isSubActive ? (
+                                    <button
+                                        onClick={() => handleEndStudy(node.id)}
+                                        className="h-10 px-4 bg-rose-500/10 text-rose-500 border border-rose-500/30 hover:bg-rose-500/20 rounded-xl text-xs font-mono font-bold flex items-center justify-center animate-pulse transition-all"
+                                    >
+                                        {Math.floor(elapsedSeconds / 60).toString().padStart(2, '0')}:{(elapsedSeconds % 60).toString().padStart(2, '0')}
+                                    </button>
+                                ) : isCompleted ? (
+                                    <div className="px-6 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400/60 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                                        <span>Mission Clear</span>
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={() => handleMarkComplete(node.id)}
+                                            className="px-6 py-2 bg-emerald-500/5 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/10 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all"
+                                        >
+                                            Done
+                                        </button>
+                                        <button
+                                            onClick={() => handleStartStudy(node.id)}
+                                            className="px-6 py-2 bg-cyan-500 text-black hover:bg-cyan-400 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all"
+                                        >
+                                            Engage
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                
+                {/* Recursive Children Rendering */}
+                {hasChildren && (
+                    <div className="ml-4 border-l border-white/5 pl-4 space-y-3">
+                        {node.children.map((child: any, cIdx: number) => (
+                            <NodeRow key={child.id} node={child} index={cIdx} depth={depth + 1} />
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     useEffect(() => {
         const check = () => setIsMobile(window.innerWidth < 768);
@@ -104,6 +245,83 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
             console.error('Failed to mark complete:', e);
         } finally {
             setCompletingId(null);
+        }
+    };
+
+    const handleEditSave = async (id: string) => {
+        setIsSavingEdit(true);
+        try {
+            const res = await fetch(`/api/nodes/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: editTitle, description: editDesc })
+            });
+            if (res.ok) {
+                // Update local state
+                setSelectedNode((prev: any) => ({
+                    ...prev,
+                    subtopics: prev.subtopics.map((s: any) => s.id === id ? { ...s, title: editTitle, description: editDesc } : s)
+                }));
+                setEditingId(null);
+                onSubtopicComplete?.();
+            }
+        } catch (e) {
+            console.error('Edit failed', e);
+        } finally {
+            setIsSavingEdit(false);
+        }
+    };
+
+    const handleDeleteNode = async (id: string) => {
+        if (!confirm('Are you sure you want to remove this topic and all its contents?')) return;
+        try {
+            const res = await fetch(`/api/nodes/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                setSelectedNode((prev: any) => ({
+                    ...prev,
+                    subtopics: prev.subtopics.filter((s: any) => s.id !== id)
+                }));
+                onSubtopicComplete?.();
+            }
+        } catch (e) {
+            console.error('Delete failed', e);
+        }
+    };
+
+    const handleAddNode = async () => {
+        if (!editTitle.trim()) return;
+        setIsSavingEdit(true);
+        try {
+            const res = await fetch('/api/nodes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    roadmapId: roadmap.id,
+                    parentId: selectedNode.id,
+                    title: editTitle,
+                    description: editDesc
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setSelectedNode((prev: any) => ({
+                    ...prev,
+                    subtopics: [...(prev.subtopics || []), {
+                        id: data.nodeId,
+                        title: editTitle,
+                        description: editDesc,
+                        status: 'unlocked'
+                    }]
+                }));
+                setIsAddingTopic(false);
+                setEditTitle('');
+                setEditDesc('');
+                onSubtopicComplete?.();
+            }
+        } catch (e) {
+            console.error('Add failed', e);
+        } finally {
+            setIsSavingEdit(false);
         }
     };
 
@@ -852,6 +1070,20 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                     {selectedNode.description || `Execute all sub-protocols in the ${selectedNode.title} sector to advance your trajectory.`}
                                 </p>
 
+                                <div className="flex items-center gap-4 mb-6">
+                                    <button
+                                        onClick={() => {
+                                            setIsAddingTopic(true);
+                                            setEditTitle('');
+                                            setEditDesc('');
+                                            setEditingId(null);
+                                        }}
+                                        className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/5 text-zinc-300 hover:text-white rounded-xl text-[10px] font-mono font-bold uppercase tracking-widest transition-all"
+                                    >
+                                        + Add Sub-Protocol
+                                    </button>
+                                </div>
+
                                 {/* Tutorial Shortcut in Modal */}
                                 {roadmap.tutorialVideoUrl && (
                                     <div className="flex items-center gap-4 p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-2xl mb-2 group/vid">
@@ -877,110 +1109,48 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                             </div>
 
                                 <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-3 custom-scrollbar">
-                                    {selectedNode.subtopics?.map((sub: any, idx: number) => {
-                                        const isSubActive = activeSession?.subtopicId === sub.id;
-                                        const isCompleted = sub.status === 'completed';
-                                        const isLocked = sub.status === 'locked';
-
-                                        return (
-                                            <div
-                                                key={sub.id}
-                                                className={`group relative p-5 rounded-2xl border transition-all duration-300 ${
-                                                    isCompleted ? 'bg-black/40 border-white/5' : 
-                                                    isSubActive ? 'bg-cyan-500/5 border-cyan-500/30' : 
-                                                    'bg-zinc-900/40 border-white/5 hover:border-white/10 hover:bg-zinc-900/60'
-                                                }`}
-                                            >
-                                                <div className="flex items-start md:items-center justify-between gap-6 flex-col md:flex-row">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-3 mb-2">
-                                                            <span className="font-mono text-[10px] text-zinc-600 group-hover:text-zinc-500 transition-colors">
-                                                                {(idx + 1).toString().padStart(2, '0')}
-                                                            </span>
-                                                            <div className={`text-base font-bold ${isCompleted ? 'text-zinc-500' : 'text-zinc-100'}`}>
-                                                                {sub.title}
-                                                            </div>
-                                                        </div>
-                                                        <p className={`text-sm leading-relaxed mb-3 md:mb-0 ml-7 ${isCompleted ? 'text-zinc-600' : 'text-zinc-400'}`}>
-                                                            {sub.description}
-                                                        </p>
-                                                        
-                                                        {sub.concepts_to_master && sub.concepts_to_master.length > 0 && !isCompleted && (
-                                                            <div className="mt-4 ml-7 space-y-2 border-l border-cyan-500/20 pl-4">
-                                                                <div className="text-[10px] font-mono text-cyan-500/80 uppercase tracking-widest">Concepts to Master</div>
-                                                                {sub.concepts_to_master.map((concept: string, cIdx: number) => (
-                                                                    <div key={cIdx} className="flex items-start gap-2 text-xs text-zinc-300">
-                                                                        <span className="text-cyan-500/50 leading-none mt-0.5">·</span>
-                                                                        <span className="leading-snug">{concept}</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="flex items-center gap-3 shrink-0 ml-7 md:ml-0 md:pl-6">
-                                                        {/* STUDY Focus Timer */}
-                                                        {isLocked ? null : isSubActive ? (
-                                                            <button
-                                                                onClick={() => handleEndStudy(sub.id)}
-                                                                className="h-10 px-4 bg-rose-500/10 text-rose-500 border border-rose-500/30 hover:bg-rose-500/20 rounded-xl text-xs font-mono font-bold flex items-center justify-center animate-pulse transition-all"
-                                                            >
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-2 animate-ping" />
-                                                                {Math.floor(elapsedSeconds / 60).toString().padStart(2, '0')}:{(elapsedSeconds % 60).toString().padStart(2, '0')}
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => handleStartStudy(sub.id)}
-                                                                disabled={activeSession !== null}
-                                                                className="w-10 h-10 rounded-xl flex items-center justify-center border border-white/5 bg-transparent text-zinc-500 hover:text-white hover:border-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                                                                aria-label="Start Focus Timer"
-                                                            >
-                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                </svg>
-                                                            </button>
-                                                        )}
-
-                                                        {/* DONE Button */}
-                                                        {!isLocked && (
-                                                            <button 
-                                                                onClick={() => !isCompleted && handleMarkComplete(sub.id)}
-                                                                disabled={completingId !== null || isCompleted}
-                                                                className={`h-10 px-6 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 border ${
-                                                                    isCompleted ? 'bg-transparent text-emerald-500/50 border-emerald-500/20 cursor-default' :
-                                                                    'bg-emerald-500/5 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/10 hover:border-emerald-500/40'
-                                                                }`}
-                                                            >
-                                                                {completingId === sub.id ? (
-                                                                    <span className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                                                                ) : (
-                                                                    <span className="text-sm leading-none">✓</span>
-                                                                )}
-                                                                Done
-                                                            </button>
-                                                        )}
-
-                                                        {/* PRACTICE Button */}
-                                                        {!isLocked && (
-                                                            <button 
-                                                                onClick={() => router.push(`/practice/${sub.id}`)}
-                                                                className={`h-10 px-6 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all border ${
-                                                                    isCompleted ? 'bg-transparent text-zinc-500 border-white/10 hover:border-white/20 hover:text-white' :
-                                                                    'bg-transparent text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10 hover:border-cyan-500/50'
-                                                                }`}
-                                                            >
-                                                                Practice
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                    {isAddingTopic && (
+                                        <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5 mb-4 animate-[fadeUp_0.3s_ease-out]">
+                                            <div className="text-[10px] font-mono text-amber-500 uppercase tracking-widest mb-4 font-bold">New Sub-Protocol</div>
+                                            <div className="space-y-4">
+                                                <input
+                                                    autoFocus
+                                                    value={editTitle}
+                                                    onChange={e => setEditTitle(e.target.value)}
+                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold text-sm focus:border-amber-500/50 outline-none"
+                                                    placeholder="Protocol Title"
+                                                />
+                                                <textarea
+                                                    value={editDesc}
+                                                    onChange={e => setEditDesc(e.target.value)}
+                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-zinc-300 text-xs focus:border-amber-500/50 outline-none h-20"
+                                                    placeholder="Focus objectives..."
+                                                />
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={handleAddNode}
+                                                        disabled={isSavingEdit || !editTitle.trim()}
+                                                        className="px-6 py-2 bg-amber-500 text-black rounded-lg text-[10px] font-bold uppercase tracking-widest"
+                                                    >
+                                                        {isSavingEdit ? 'Initializing...' : 'Add Topic'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setIsAddingTopic(false)}
+                                                        className="px-6 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-[10px] font-bold uppercase tracking-widest"
+                                                    >
+                                                        Cancel
+                                                    </button>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
+                                        </div>
+                                    )}
+                                    {selectedNode.children?.map((child: any, idx: number) => (
+                                        <NodeRow key={child.id} node={child} index={idx} depth={0} />
+                                    ))}
                                 </div>
+                            </div>
                         </div>
                     </div>
-                </div>
             )}
 
             <style jsx global>{`

@@ -32,29 +32,36 @@ export async function POST(req: Request) {
         }
         const userId = session.user_id;
 
-        const { prompt } = await req.json();
+        const { prompt, sourceData } = await req.json();
 
         if (!prompt || typeof prompt !== 'string') {
             return NextResponse.json({ error: 'Valid prompt is required' }, { status: 400 });
         }
 
+        const isRawDataMode = !!sourceData;
+
         const systemPrompt = `You are an expert Curriculum Architect who builds deeply structured learning roadmaps. 
-Your task is to generate a DEEPLY NESTED mind-map style curriculum tree with 5-6 levels of depth.
+${isRawDataMode ? 
+`CRITICAL: The user has provided UNSTRUCTURED RAW DATA below. Your task is to analyze this data and transform it into a logical, structured curriculum tree. 
+If the data is incomplete, supplement it with your expert knowledge to ensure a cohesive learning journey.` : 
+`Your task is to generate a DEEPLY NESTED mind-map style curriculum tree with 5-6 levels of depth.`}
 
 CRITICAL DEPTH REQUIREMENTS:
-- Level 0: Main chapters/phases (e.g. "Python Fundamentals", "Data Structures", "OOP") — generate 8 to 13 chapters
-- Level 1: Major topics within each chapter (e.g. "What is Python", "Environment Setup") — generate 2 to 5 per chapter
-- Level 2: Subtopics (e.g. "Installing Python", "IDEs", "Package Management") — generate 2 to 4 per topic
-- Level 3: Specific concepts (e.g. "VS Code", "PyCharm", "Jupyter Notebook") — generate 2 to 5 per subtopic
-- Level 4+: Even deeper granular points where relevant (e.g. "pip", "virtualenv", "conda")
+- Level 0: Main chapters/phases — generate 5 to 13 chapters
+- Level 1: Major topics within each chapter — generate 2 to 5 per chapter
+- Level 2: Subtopics — generate 2 to 4 per topic
+- Level 3: Specific concepts — generate 2 to 5 per subtopic
+- Level 4+: Even deeper granular points where relevant
 
 IMPORTANT RULES:
 - Nodes with NO children are "leaf nodes" — these represent the most granular actionable study items
-- Every branch should go AT LEAST 3 levels deep, preferably 4-5
+- Every branch should go AT LEAST 3 levels deep
 - Use short, precise titles (2-6 words max)
 - Add a brief "description" field only on level 0 and level 1 nodes
-- Make the curriculum practical, modern, and job-ready
-- Cover the topic comprehensively — don't leave major areas out
+- ${isRawDataMode ? "Organize the provided data logically even if it is messy." : "Cover the topic comprehensively."}
+- Respond with ONLY valid JSON.
+
+${isRawDataMode ? `\nRAW DATA TO ANALYZE:\n"""\n${sourceData}\n"""\n` : ''}
 
 You MUST respond with ONLY valid JSON matching this recursive structure:
 {
