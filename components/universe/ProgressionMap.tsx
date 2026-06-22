@@ -359,6 +359,26 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
         }
     };
 
+    const handleTouchStart = (e: React.TouchEvent) => {
+        isDragging.current = true;
+        dragDistance.current = 0;
+        dragStartX.current = e.touches[0].pageX;
+        scrollStartX.current = scrollContainerRef.current?.scrollLeft || 0;
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!isDragging.current) return;
+        const dx = e.touches[0].pageX - dragStartX.current;
+        dragDistance.current = Math.abs(dx);
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollLeft = scrollStartX.current - dx;
+        }
+    };
+
+    const handleTouchEnd = () => {
+        isDragging.current = false;
+    };
+
 
 
     const handleScroll = () => {
@@ -429,8 +449,8 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
             }
         });
 
-        const SPACING_X = 400;
-        const VARIANCE_Y = 150; 
+        const SPACING_X = isMobile ? 220 : 400;
+        const VARIANCE_Y = isMobile ? 80 : 150; 
         const DEPTH_RANGE = 100;
 
         flattenedSectors.forEach((p: any, globalIndex: number) => {
@@ -788,6 +808,10 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                     onMouseLeave={handleMouseLeave}
                     onMouseUp={handleMouseUp}
                     onMouseMove={handleMouseMove}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
                     className="absolute inset-0 overflow-x-auto overflow-y-auto hide-scrollbar cursor-grab"
                     style={{
                         padding: '0 50vw',
@@ -798,7 +822,7 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                         ref={nodeContainerRef}
                         className="relative h-[800px] flex items-center"
                         style={{
-                            width: `${Math.max(window.innerWidth, (nodes.length) * 400 + 1000)}px`,
+                            width: `${Math.max(window.innerWidth, (nodes.length) * (isMobile ? 220 : 400) + 1000)}px`,
                             transformStyle: 'preserve-3d',
                             transform: 'rotateX(55deg)',
                             transformOrigin: 'center center'
