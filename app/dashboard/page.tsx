@@ -14,26 +14,52 @@ export default async function DashboardPage() {
     if (!userData) redirect('/login');
     const userId = userData.user_id;
 
-    // 1. Direct Profile Query
-    const profileResult = await db.query(`
-        SELECT lp.*, up.full_name, u.has_completed_onboarding
-        FROM users u
-        LEFT JOIN user_learning_profile lp ON u.id = lp.user_id
-        LEFT JOIN user_profiles up ON u.id = up.user_id
-        WHERE u.id = $1
-    `, [userId]);
+    // 1. Parallelize independent database queries to prevent waterfall delays
+    const [profileResult, roadmapCheck, statsQuery, topStatsResult] = await Promise.all([
+        db.query(`
+            SELECT lp.*, up.full_name, u.has_completed_onboarding
+            FROM users u
+            LEFT JOIN user_learning_profile lp ON u.id = lp.user_id
+            LEFT JOIN user_profiles up ON u.id = up.user_id
+            WHERE u.id = $1
+        `, [userId]),
+        db.query(`
+            SELECT r.id, r.title
+            FROM roadmaps r
+            JOIN users u ON u.id = $1 AND r.id = u.active_roadmap_id
+        `, [userId]),
+        db.query(`
+            SELECT 
+                COALESCE(SUM(duration_seconds), 0)::INTEGER as total_seconds,
+                COUNT(*)::INTEGER as total_sessions,
+                (SELECT COUNT(*) FROM subtopic_progress WHERE user_id = $1 AND status = 'completed')::INTEGER as completed_topics_count,
+                (SELECT COUNT(*) FROM roadmaps WHERE user_id = $1)::INTEGER as roadmaps_count
+            FROM study_sessions 
+            WHERE user_id = $1 AND duration_seconds IS NOT NULL
+        `, [userId]),
+        db.query(`
+            SELECT 
+                ss.subtopic_id,
+                n.title as subtopic_title,
+                p.title as planet_title,
+                g.title as galaxy_title,
+                COALESCE(SUM(ss.duration_seconds), 0)::INTEGER as total_time,
+                COUNT(ss.id)::INTEGER as study_sessions_count
+            FROM study_sessions ss
+            JOIN roadmap_nodes n ON n.id = ss.subtopic_id
+            LEFT JOIN roadmap_nodes p ON n.parent_id = p.id
+            LEFT JOIN roadmap_nodes g ON p.parent_id = g.id
+            WHERE ss.user_id = $1 AND ss.duration_seconds IS NOT NULL
+            GROUP BY ss.subtopic_id, n.title, p.title, g.title
+            ORDER BY total_time DESC
+            LIMIT 5
+        `, [userId])
+    ]);
 
     const profile = profileResult.rows[0];
     if (!profile || !profile.experience_level) {
         redirect('/profile');
     }
-
-    // 2. Direct Roadmap Query — now uses roadmap_nodes
-    const roadmapCheck = await db.query(`
-        SELECT r.id, r.title
-        FROM roadmaps r
-        JOIN users u ON u.id = $1 AND r.id = u.active_roadmap_id
-    `, [userId]);
 
     let activeRoadmapData: any = null;
 
@@ -77,42 +103,12 @@ export default async function DashboardPage() {
         activeRoadmapData = { id: rm.id, title: rm.title, children: rootNodes };
     }
 
-    // 3. Direct Stats Query
-    const statsQuery = await db.query(`
-        SELECT 
-            COALESCE(SUM(duration_seconds), 0)::INTEGER as total_seconds,
-            COUNT(*)::INTEGER as total_sessions,
-            (SELECT COUNT(*) FROM subtopic_progress WHERE user_id = $1 AND status = 'completed')::INTEGER as completed_topics_count,
-            (SELECT COUNT(*) FROM roadmaps WHERE user_id = $1)::INTEGER as roadmaps_count
-        FROM study_sessions 
-        WHERE user_id = $1 AND duration_seconds IS NOT NULL
-    `, [userId]);
-
     const stats = statsQuery.rows[0];
     const globalStats = {
         totalSeconds: stats.total_seconds || 0,
         sessionsCount: stats.total_sessions || 0,
         completedTopics: stats.completed_topics_count || 0
     };
-
-    // 4. Direct Top Study Stats (logic from api/study/top/route.ts)
-    const topStatsResult = await db.query(`
-        SELECT 
-            ss.subtopic_id,
-            n.title as subtopic_title,
-            p.title as planet_title,
-            g.title as galaxy_title,
-            COALESCE(SUM(ss.duration_seconds), 0)::INTEGER as total_time,
-            COUNT(ss.id)::INTEGER as study_sessions_count
-        FROM study_sessions ss
-        JOIN roadmap_nodes n ON n.id = ss.subtopic_id
-        LEFT JOIN roadmap_nodes p ON n.parent_id = p.id
-        LEFT JOIN roadmap_nodes g ON p.parent_id = g.id
-        WHERE ss.user_id = $1 AND ss.duration_seconds IS NOT NULL
-        GROUP BY ss.subtopic_id, n.title, p.title, g.title
-        ORDER BY total_time DESC
-        LIMIT 5
-    `, [userId]);
 
     const topStudyStats = { topSubtopics: topStatsResult.rows };
     const activeRoadmap = activeRoadmapData;
