@@ -1,22 +1,51 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import FloatingAstronaut from './FloatingAstronaut';
 
 export default function BackgroundEffects() {
     const [mounted, setMounted] = useState(false);
-    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+    // Refs for parallax elements to bypass React state for performance
+    const hudRef = useRef<HTMLDivElement>(null);
+    const farRef = useRef<HTMLDivElement>(null);
+    const midRef = useRef<HTMLDivElement>(null);
+    const closeRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setMounted(true);
+
+        let animationFrameId: number;
+        let targetX = 0;
+        let targetY = 0;
+        let currentX = 0;
+        let currentY = 0;
+
         const handleMouseMove = (e: MouseEvent) => {
-            setMousePos({
-                x: (e.clientX / window.innerWidth - 0.5) * 20,
-                y: (e.clientY / window.innerHeight - 0.5) * 20,
-            });
+            targetX = (e.clientX / window.innerWidth - 0.5) * 20;
+            targetY = (e.clientY / window.innerHeight - 0.5) * 20;
         };
+
+        const animate = () => {
+            // Smooth interpolation
+            currentX += (targetX - currentX) * 0.1;
+            currentY += (targetY - currentY) * 0.1;
+
+            if (hudRef.current) hudRef.current.style.transform = `translate3d(${currentX * 0.3}px, ${currentY * 0.3}px, 0)`;
+            if (farRef.current) farRef.current.style.transform = `translate3d(${currentX * 0.5}px, ${currentY * 0.5}px, 0)`;
+            if (midRef.current) midRef.current.style.transform = `translate3d(${currentX * 1.2}px, ${currentY * 1.2}px, 0)`;
+            if (closeRef.current) closeRef.current.style.transform = `translate3d(${currentX * 2.5}px, ${currentY * 2.5}px, 0)`;
+
+            animationFrameId = requestAnimationFrame(animate);
+        };
+
         window.addEventListener('mousemove', handleMouseMove);
-        return () => window.removeEventListener('mousemove', handleMouseMove);
+        animationFrameId = requestAnimationFrame(animate);
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            cancelAnimationFrame(animationFrameId);
+        };
     }, []);
 
     // Generate static star data once to avoid re-renders
@@ -46,14 +75,14 @@ export default function BackgroundEffects() {
         <div className="fixed inset-0 pointer-events-none z-[-5] overflow-hidden bg-black select-none" style={{ pointerEvents: 'none' }}>
             {/* Global HUD Grid Overlay */}
             <div
+                ref={hudRef}
                 className="hud-grid pointer-events-none"
-                style={{ transform: `translate3d(${mousePos.x * 0.3}px, ${mousePos.y * 0.3}px, 0)` }}
             />
 
             {/* Parallax Star Layers */}
             <div
+                ref={farRef}
                 className="parallax-layer"
-                style={{ transform: `translate3d(${mousePos.x * 0.5}px, ${mousePos.y * 0.5}px, 0)` }}
             >
                 {starLayers.far.map(star => (
                     <div
@@ -73,8 +102,8 @@ export default function BackgroundEffects() {
             </div>
 
             <div
+                ref={midRef}
                 className="parallax-layer"
-                style={{ transform: `translate3d(${mousePos.x * 1.2}px, ${mousePos.y * 1.2}px, 0)` }}
             >
                 {starLayers.mid.map(star => (
                     <div
@@ -94,8 +123,8 @@ export default function BackgroundEffects() {
             </div>
 
             <div
+                ref={closeRef}
                 className="parallax-layer"
-                style={{ transform: `translate3d(${mousePos.x * 2.5}px, ${mousePos.y * 2.5}px, 0)` }}
             >
                 {starLayers.close.map(star => (
                     <div
