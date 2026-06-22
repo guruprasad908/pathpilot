@@ -5,6 +5,7 @@ const withPWA = require('@ducanh2912/next-pwa').default({
 });
 
 const nextConfig = {
+    turbopack: {},
     // ─── HTTP Security Headers ─────────────────────────────────────────────
     // Applied to all routes on every response.
     async headers() {
