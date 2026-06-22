@@ -5,8 +5,29 @@ import { useState, useEffect } from 'react';
 export default function InstallPrompt() {
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [showPrompt, setShowPrompt] = useState(false);
+    const [isIOS, setIsIOS] = useState(false);
 
     useEffect(() => {
+        // Detect if the app is already installed
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        if (isStandalone) {
+            return;
+        }
+
+        // Detect iOS
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        const isIOSDevice = 
+            /ipad|iphone|ipod/.test(userAgent) || 
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        
+        if (isIOSDevice) {
+            setIsIOS(true);
+            // Show prompt automatically for iOS after 3 seconds
+            setTimeout(() => {
+                setShowPrompt(true);
+            }, 3000);
+        }
+
         const handler = (e: any) => {
             // Prevent the mini-infobar from appearing on mobile
             e.preventDefault();
@@ -69,12 +90,19 @@ export default function InstallPrompt() {
                 </button>
             </div>
             
-            <button 
-                onClick={handleInstallClick}
-                className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-black font-bold font-mono text-[11px] uppercase tracking-widest rounded-xl transition-all"
-            >
-                Install App
-            </button>
+            {isIOS ? (
+                <div className="bg-white/5 p-3 rounded-xl border border-white/10 text-xs text-zinc-300 font-mono text-center">
+                    Tap the <span className="font-bold text-white">Share</span> icon below, then select <br/><span className="font-bold text-white">"Add to Home Screen"</span>.
+                </div>
+            ) : (
+                <button 
+                    onClick={handleInstallClick}
+                    className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-black font-bold font-mono text-[11px] uppercase tracking-widest rounded-xl transition-all"
+                >
+                    Install App
+                </button>
+            )}
+            
             <style jsx>{`
                 @keyframes fadeUp {
                     from { opacity: 0; transform: translateY(20px); }
