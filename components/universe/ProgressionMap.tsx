@@ -790,7 +790,8 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                     onMouseMove={handleMouseMove}
                     className="absolute inset-0 overflow-x-auto overflow-y-auto hide-scrollbar cursor-grab"
                     style={{
-                        padding: '0 50vw'
+                        padding: '0 50vw',
+                        perspective: '1200px'
                     }}
                 >
                     <div
@@ -798,7 +799,9 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                         className="relative h-[800px] flex items-center"
                         style={{
                             width: `${Math.max(window.innerWidth, (nodes.length) * 400 + 1000)}px`,
-                            transformStyle: 'preserve-3d'
+                            transformStyle: 'preserve-3d',
+                            transform: 'rotateX(55deg)',
+                            transformOrigin: 'center center'
                         }}
                     >
                         {/* Neural Connectors SVG */}
@@ -898,8 +901,9 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                     style={{
                                         left: `${node.coords.x}px`,
                                         top: `${node.coords.y}px`,
-                                        transform: `translate3d(0, 0, ${node.coords.z}px)`, // Adjusted Y-translate alignment
+                                        transform: `translate3d(0, 0, ${node.coords.z}px) rotateX(-55deg)`,
                                         transformStyle: 'preserve-3d',
+                                        transformOrigin: 'bottom center',
                                         zIndex: 20
                                     }}
                                 >
