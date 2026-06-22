@@ -805,21 +805,15 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                         <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                             <defs>
                                 <filter id="neural-glow">
-                                    <feGaussianBlur stdDeviation="3" result="blur" />
+                                    <feGaussianBlur stdDeviation="4" result="blur" />
                                     <feComposite in="SourceGraphic" in2="blur" operator="over" />
                                 </filter>
-                                <linearGradient id="link-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stopColor="rgba(255,255,255,0.05)" />
-                                    <stop offset="50%" stopColor="rgba(255,255,255,0.2)" />
-                                    <stop offset="100%" stopColor="rgba(255,255,255,0.05)" />
-                                </linearGradient>
                             </defs>
                             {nodes.map((node, i) => {
                                 if (i === 0) return null;
                                 const prev = nodes[i - 1];
                                 const isLinkActive = prev.calcStatus === 'completed';
 
-                                // Neural path (cubic bezier for "organic" feel)
                                 const x1 = prev.coords.x + 50;
                                 const y1 = prev.coords.y + 50;
                                 const x2 = node.coords.x + 50;
@@ -827,17 +821,42 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
 
                                 const cp1x = x1 + (x2 - x1) * 0.5;
                                 const cp2x = x1 + (x2 - x1) * 0.5;
+                                const pathData = `M ${x1} ${y1} C ${cp1x} ${y1}, ${cp2x} ${y2}, ${x2} ${y2}`;
 
                                 return (
-                                    <path
-                                        key={`link-${i}`}
-                                        d={`M ${x1} ${y1} C ${cp1x} ${y1}, ${cp2x} ${y2}, ${x2} ${y2}`}
-                                        stroke={isLinkActive ? 'rgba(34, 211, 238, 0.4)' : 'rgba(255, 255, 255, 0.05)'}
-                                        strokeWidth={isLinkActive ? "3" : "1"}
-                                        fill="none"
-                                        filter={isLinkActive ? "url(#neural-glow)" : ""}
-                                        className={isLinkActive ? "animate-[linkPulse_4s_infinite]" : ""}
-                                    />
+                                    <g key={`link-${i}`}>
+                                        {/* Base Faint Line */}
+                                        <path
+                                            d={pathData}
+                                            stroke="rgba(255, 255, 255, 0.05)"
+                                            strokeWidth="1"
+                                            fill="none"
+                                        />
+                                        
+                                        {/* Active Laser Flow */}
+                                        {isLinkActive && (
+                                            <>
+                                                <path
+                                                    d={pathData}
+                                                    stroke="rgba(34, 211, 238, 0.3)"
+                                                    strokeWidth="3"
+                                                    fill="none"
+                                                    filter="url(#neural-glow)"
+                                                />
+                                                {/* Animated Data Packet (Moving Energy Orb) */}
+                                                <path
+                                                    d={pathData}
+                                                    stroke="rgba(34, 211, 238, 0.9)"
+                                                    strokeWidth="4"
+                                                    fill="none"
+                                                    strokeLinecap="round"
+                                                    style={{ animation: 'dataPacket 3s linear infinite' }}
+                                                    strokeDasharray="25, 1500"
+                                                    filter="url(#neural-glow)"
+                                                />
+                                            </>
+                                        )}
+                                    </g>
                                 );
                             })}
                         </svg>
@@ -946,21 +965,37 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                             <div className="absolute left-0 right-0 top-1/2 h-px bg-white/5 -translate-y-1/2 -mx-2" />
                                         </div>
 
-                                        {/* 3. The Glass Housing (Structural Layer) */}
-                                        <div className={`absolute inset-0 rounded-full backdrop-blur-md transition-colors duration-500 border ${isCurrent ? 'bg-black/40 border-cyan-500/50 shadow-[inset_0_0_30px_rgba(34,211,238,0.2)]' :
-                                            isCompleted ? 'bg-black/60 border-emerald-500/30' : 'bg-black/80 border-white/10'
+                                        {/* 3. The Planetary Sphere (CSS 3D illusion) */}
+                                        <div className={`absolute inset-0 rounded-full overflow-hidden transition-all duration-700 border ${
+                                            isCurrent ? 'shadow-[0_0_40px_rgba(34,211,238,0.3),_inset_-15px_-15px_30px_rgba(0,0,0,0.8),_inset_5px_5px_20px_rgba(255,255,255,0.2)] border-cyan-500/50' :
+                                            isCompleted ? 'shadow-[0_0_20px_rgba(16,185,129,0.2),_inset_-15px_-15px_30px_rgba(0,0,0,0.8),_inset_5px_5px_20px_rgba(255,255,255,0.2)] border-emerald-500/30' : 
+                                            'shadow-[inset_-15px_-15px_30px_rgba(0,0,0,0.9),_inset_5px_5px_20px_rgba(255,255,255,0.1)] border-white/10'
+                                            }`}
+                                        >
+                                            {/* Rotating Texture Background */}
+                                            <div 
+                                                className="absolute inset-0 w-[200%] h-full opacity-40 mix-blend-screen"
+                                                style={{
+                                                    backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.1) 8px, rgba(255,255,255,0.1) 16px)`,
+                                                    backgroundSize: '100px 100%',
+                                                    animation: 'planetRotate 20s linear infinite'
+                                                }}
+                                            />
+                                            {/* Base Core Color */}
+                                            <div className={`absolute inset-0 w-full h-full mix-blend-overlay ${
+                                                isCurrent ? 'bg-cyan-500/40' :
+                                                isCompleted ? 'bg-emerald-500/30' : 
+                                                'bg-zinc-600/20'
                                             }`} />
-
-                                        {/* 4. The Data Core (Inner Center) */}
-                                        <div className="relative z-10 flex items-center justify-center w-full h-full pointer-events-none">
-                                            {isLocked ? (
-                                                <div className="w-4 h-4 rounded-[4px] border border-white/20 bg-white/5 rotate-45 transition-all" />
-                                            ) : isCompleted ? (
-                                                <div className="w-5 h-5 rounded-[4px] border border-emerald-400 bg-emerald-500/20 rotate-45 shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all" />
-                                            ) : (
-                                                <div className="w-6 h-6 rounded-[4px] border-2 border-cyan-400 bg-cyan-400/20 rotate-45 shadow-[0_0_20px_rgba(34,211,238,0.6)] animate-pulse transition-all" />
-                                            )}
                                         </div>
+
+                                        {/* 4. Planetary Atmosphere Halo */}
+                                        {(isCurrent || isCompleted) && (
+                                            <div className={`absolute -inset-1 rounded-full pointer-events-none transition-opacity duration-1000 mix-blend-screen ${
+                                                isCurrent ? 'bg-[radial-gradient(circle_at_center,_transparent_50%,_rgba(34,211,238,0.4)_100%)] opacity-80' : 
+                                                'bg-[radial-gradient(circle_at_center,_transparent_50%,_rgba(16,185,129,0.3)_100%)] opacity-50'
+                                            }`} />
+                                        )}
 
                                         {/* Unified Telemetry & Title Label */}
                                         <div className="absolute top-[125px] left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none transition-all duration-500 w-max max-w-[220px] text-center">
@@ -1032,50 +1067,62 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                 </>
             )}
 
-            {/* ─── Mission Manifest Glass Modal ─────────────────────────────── */}
+            {/* ─── Tactical Sci-Fi HUD Modal ─────────────────────────────── */}
             {selectedNode && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-black/70 backdrop-blur-md"
                     style={{ animation: 'manifestFadeIn 0.3s ease-out forwards' }}
                     onClick={() => setSelectedNode(null)}
                 >
                     <div
-                        className="w-full max-w-2xl bg-[#030303]/90 backdrop-blur-3xl border border-white/10 rounded-[28px] shadow-[0_0_100px_rgba(0,0,0,0.9)] relative overflow-hidden"
+                        className="w-full max-w-4xl max-h-[90vh] bg-[#030303]/95 border border-cyan-500/20 rounded-3xl shadow-[0_0_150px_rgba(34,211,238,0.1)] relative overflow-hidden flex flex-col"
                         style={{ animation: 'manifestScaleIn 0.4s cubic-bezier(0.16,1,0.3,1) forwards' }}
                         onClick={e => e.stopPropagation()}
                     >
-                        {/* Top Energy Accent */}
-                        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                        {/* Futuristic Grid Background */}
+                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+                        
+                        {/* Scanning Line Overlay */}
+                        <div className="absolute inset-0 w-full h-[150px] bg-gradient-to-b from-transparent via-cyan-500/10 to-transparent blur-[4px] pointer-events-none animate-[scanline_6s_linear_infinite]" />
 
-                        <div className="p-8 md:p-10">
+                        {/* Tech Borders */}
+                        <div className="absolute top-0 left-0 w-32 h-32 border-t-2 border-l-2 border-cyan-500/50 rounded-tl-3xl pointer-events-none" />
+                        <div className="absolute bottom-0 right-0 w-32 h-32 border-b-2 border-r-2 border-cyan-500/50 rounded-br-3xl pointer-events-none" />
+
+                        {/* Top Energy Accent */}
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-500/80 to-transparent shadow-[0_0_20px_rgba(34,211,238,0.5)]" />
+
+                        <div className="p-8 md:p-10 flex-1 overflow-y-auto custom-scrollbar relative z-10">
                             {/* Close Button */}
                             <button
                                 onClick={() => setSelectedNode(null)}
-                                className="absolute top-6 right-6 w-9 h-9 flex items-center justify-center rounded-full bg-white/5 text-zinc-500 hover:text-white transition-all border border-white/5 hover:border-white/20"
+                                className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-cyan-500/5 text-cyan-500/60 hover:text-cyan-400 transition-all border border-cyan-500/20 hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:rotate-90 z-20"
                                 aria-label="Close panel"
                             >
-                                <span className="text-base leading-none">✕</span>
+                                <span className="text-xl leading-none">✕</span>
                             </button>
 
                             {/* Header */}
-                            <div className="mb-8 pr-10">
+                            <div className="mb-8 pr-12 relative">
+                                <div className="absolute left-[-2rem] top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-500/80 to-transparent rounded-r" />
                                 <div className="flex items-center gap-3 mb-3">
-                                    <div className={`w-1.5 h-1.5 rounded-full ${selectedNode.calcStatus === 'completed'
-                                        ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]'
-                                        : 'bg-white shadow-[0_0_6px_rgba(255,255,255,0.6)] animate-pulse'
+                                    <div className={`w-2 h-2 rounded-[2px] rotate-45 ${selectedNode.calcStatus === 'completed'
+                                        ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
+                                        : 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)] animate-pulse'
                                         }`} />
-                                    <span className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">
-                                        Mission Protocol · {selectedNode.calcStatus.replace('_', ' ')}
+                                    <span className="font-mono text-[11px] uppercase tracking-[0.4em] text-cyan-500/80 font-bold">
+                                        Tactical Overlay // {selectedNode.calcStatus.replace('_', ' ')}
                                     </span>
                                 </div>
-                                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-3">
+                                <h3 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-4 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
                                     {selectedNode.title}
                                 </h3>
-                                <p className="text-zinc-500 text-sm leading-relaxed font-light mb-6">
-                                    {selectedNode.description || `Execute all sub-protocols in the ${selectedNode.title} sector to advance your trajectory.`}
+                                <p className="text-zinc-400 text-sm leading-relaxed font-mono max-w-2xl mb-8">
+                                    <span className="text-cyan-500/50 mr-2">{'>'}</span>
+                                    {selectedNode.description || `Awaiting manual sequence execution for ${selectedNode.title}. All sub-protocols must be verified to complete the sector jump.`}
                                 </p>
 
-                                <div className="flex items-center gap-4 mb-6">
+                                <div className="flex flex-wrap items-center gap-4 mb-8 pb-8 border-b border-white/5">
                                     <button
                                         onClick={() => {
                                             setIsAddingTopic(true);
@@ -1083,9 +1130,12 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                             setEditDesc('');
                                             setEditingId(null);
                                         }}
-                                        className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/5 text-zinc-300 hover:text-white rounded-xl text-[10px] font-mono font-bold uppercase tracking-widest transition-all"
+                                        className="group relative px-6 py-2.5 bg-black hover:bg-cyan-950/30 border border-cyan-500/30 text-cyan-400 hover:text-cyan-300 rounded-sm text-[10px] font-mono font-bold uppercase tracking-widest transition-all overflow-hidden"
                                     >
-                                        + Add Sub-Protocol
+                                        <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+                                        <span className="relative z-10 flex items-center gap-2">
+                                            <span className="text-lg leading-none mb-0.5">+</span> Add Sub-Protocol
+                                        </span>
                                     </button>
                                 </div>
 
@@ -1113,37 +1163,41 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                                 )}
                             </div>
 
-                                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-3 custom-scrollbar">
+                                <div className="space-y-4">
                                     {isAddingTopic && (
-                                        <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5 mb-4 animate-[fadeUp_0.3s_ease-out]">
-                                            <div className="text-[10px] font-mono text-amber-500 uppercase tracking-widest mb-4 font-bold">New Sub-Protocol</div>
+                                        <div className="p-6 rounded-lg border border-cyan-500/40 bg-cyan-950/20 mb-6 animate-[fadeUp_0.3s_ease-out] relative overflow-hidden">
+                                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyan-500" />
+                                            <div className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-4 font-bold flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                                                Initialize New Sequence
+                                            </div>
                                             <div className="space-y-4">
                                                 <input
                                                     autoFocus
                                                     value={editTitle}
                                                     onChange={e => setEditTitle(e.target.value)}
-                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold text-sm focus:border-amber-500/50 outline-none"
-                                                    placeholder="Protocol Title"
+                                                    className="w-full bg-black/60 border border-cyan-500/20 rounded px-4 py-3 text-white font-mono text-sm focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 outline-none transition-all placeholder-zinc-700"
+                                                    placeholder="[ SEQUENCE_IDENTIFIER ]"
                                                 />
                                                 <textarea
                                                     value={editDesc}
                                                     onChange={e => setEditDesc(e.target.value)}
-                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-zinc-300 text-xs focus:border-amber-500/50 outline-none h-20"
-                                                    placeholder="Focus objectives..."
+                                                    className="w-full bg-black/60 border border-cyan-500/20 rounded px-4 py-3 text-zinc-400 font-mono text-xs focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 outline-none h-24 transition-all placeholder-zinc-700"
+                                                    placeholder="> Enter protocol parameters..."
                                                 />
                                                 <div className="flex items-center gap-3">
                                                     <button
                                                         onClick={handleAddNode}
                                                         disabled={isSavingEdit || !editTitle.trim()}
-                                                        className="px-6 py-2 bg-amber-500 text-black rounded-lg text-[10px] font-bold uppercase tracking-widest"
+                                                        className="px-6 py-2.5 bg-cyan-500 text-black hover:bg-cyan-400 rounded-sm text-[10px] font-mono font-bold uppercase tracking-widest transition-all disabled:opacity-50"
                                                     >
-                                                        {isSavingEdit ? 'Initializing...' : 'Add Topic'}
+                                                        {isSavingEdit ? 'Executing...' : 'Commit Sequence'}
                                                     </button>
                                                     <button
                                                         onClick={() => setIsAddingTopic(false)}
-                                                        className="px-6 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-[10px] font-bold uppercase tracking-widest"
+                                                        className="px-6 py-2.5 bg-transparent border border-white/10 text-zinc-400 hover:text-white hover:border-white/30 rounded-sm text-[10px] font-mono font-bold uppercase tracking-widest transition-all"
                                                     >
-                                                        Cancel
+                                                        Abort
                                                     </button>
                                                 </div>
                                             </div>
@@ -1174,13 +1228,24 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
                     from { transform: scale(0.9) translateY(20px); opacity: 0; filter: blur(20px); }
                     to { transform: scale(1) translateY(0); opacity: 1; filter: blur(0); }
                 }
-                @keyframes linkPulse {
-                    0%, 100% { opacity: 0.1; stroke-width: 1.5; }
-                    50% { opacity: 0.4; stroke-width: 2.5; }
+                @keyframes planetRotate {
+                    from { transform: translateX(0); }
+                    to { transform: translateX(-50%); }
+                }
+                @keyframes dataPacket {
+                    from { stroke-dashoffset: 1500; }
+                    to { stroke-dashoffset: 0; }
                 }
                 @keyframes fadeUp {
                     from { opacity: 0; transform: translateY(10px); }
                     to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes scanline {
+                    0% { transform: translateY(-100%); }
+                    100% { transform: translateY(100vh); }
+                }
+                @keyframes shimmer {
+                    100% { transform: translateX(100%); }
                 }
             `}</style>
 
