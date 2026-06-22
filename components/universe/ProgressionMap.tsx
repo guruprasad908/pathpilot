@@ -37,7 +37,7 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
     // Recursive Node Row for Mission Manifest
     const NodeRow = ({ node, index, depth = 0 }: { node: any, index: number, depth?: number }) => {
         const isSubActive = activeSession?.subtopicId === node.id;
-        const isCompleted = node.status === 'completed';
+        const isCompleted = node.status === 'completed' || completedIds.has(node.id);
         const isLocked = node.status === 'locked';
         const hasChildren = node.children && node.children.length > 0;
 
@@ -217,29 +217,34 @@ export default function ProgressionMap({ roadmap, onSubtopicComplete }: { roadma
     const handleMarkComplete = async (subtopicId: string) => {
         if (completedIds.has(subtopicId) || completingId) return;
         setCompletingId(subtopicId);
+
+        // Optimistically update local state IMMEDIATELY for instant UI feedback
+        setCompletedIds(prev => new Set([...prev, subtopicId]));
+        setSelectedNode((prev: any) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                subtopics: prev.subtopics?.map((s: any) =>
+                    s.id === subtopicId ? { ...s, status: 'completed' } : s
+                ),
+                children: prev.children?.map((c: any) =>
+                    c.id === subtopicId ? { ...c, status: 'completed' } : c
+                )
+            };
+        });
+
         try {
             const res = await fetch(`/api/subtopics/${subtopicId}/complete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
             });
             if (res.ok) {
-                // Optimistically update local state immediately
-                setCompletedIds(prev => new Set([...prev, subtopicId]));
-                // Update selected node's subtopics in-place so the panel re-renders
-                setSelectedNode((prev: any) => {
-                    if (!prev) return prev;
-                    return {
-                        ...prev,
-                        subtopics: prev.subtopics.map((s: any) =>
-                            s.id === subtopicId ? { ...s, status: 'completed' } : s
-                        )
-                    };
-                });
                 // Notify parent to refresh the roadmap data (updates node glow colors on map)
                 onSubtopicComplete?.();
             } else {
                 const err = await res.json();
                 console.error('Failed to mark complete:', err.error);
+                // Note: Realistically we would revert the optimistic update here if needed
             }
         } catch (e) {
             console.error('Failed to mark complete:', e);
